@@ -16,6 +16,8 @@ import cardRoutes       from './routes/cards';
 import kycRoutes, { amlRouter } from './routes/kyc';
 import creditRoutes     from './routes/credit';
 import adminRoutes      from './routes/admin';
+import notificationRoutes from './routes/notifications';
+import apiKeyRoutes     from './routes/apiKeys';
 
 const app = express();
 
@@ -43,8 +45,10 @@ app.use('/v1/banks',       bankRoutes);
 app.use('/v1/cards',       cardRoutes);
 app.use('/v1/kyc',         kycRoutes);
 app.use('/v1/aml',         amlRouter);
-app.use('/v1/credit',      creditRoutes);
-app.use('/v1/admin',       adminRoutes);
+app.use('/v1/credit',         creditRoutes);
+app.use('/v1/admin',          adminRoutes);
+app.use('/v1/notifications',  notificationRoutes);
+app.use('/v1/api-keys',       apiKeyRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

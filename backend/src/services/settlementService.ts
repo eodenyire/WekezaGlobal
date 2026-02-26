@@ -56,10 +56,15 @@ export async function getSettlement(settlementId: string): Promise<Settlement> {
 
   const settlement = resolveStatus(rows[0]);
 
-  // Persist simulated status change
+  // Persist simulated status change and write reconciliation log
   if (settlement.status !== rows[0].status) {
     await pool.query(
       "UPDATE settlements SET status = 'completed', updated_at = NOW() WHERE settlement_id = $1",
+      [settlementId]
+    );
+    await pool.query(
+      `INSERT INTO reconciliation_logs (settlement_id, result, notes)
+       VALUES ($1, 'matched', 'Auto-reconciled on status check')`,
       [settlementId]
     );
   }

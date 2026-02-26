@@ -15,6 +15,8 @@ import Cards from './pages/Cards';
 import KYC from './pages/KYC';
 import CreditScore from './pages/CreditScore';
 import AdminDashboard from './pages/AdminDashboard';
+import ApiKeys from './pages/ApiKeys';
+import Notifications from './pages/Notifications';
 
 import './styles/global.css';
 
@@ -44,6 +46,8 @@ const App: React.FC = () => (
           <Route path="cards"          element={<Cards />} />
           <Route path="kyc"            element={<KYC />} />
           <Route path="credit"         element={<CreditScore />} />
+          <Route path="api-keys"       element={<ApiKeys />} />
+          <Route path="notifications"  element={<Notifications />} />
           <Route
             path="admin"
             element={

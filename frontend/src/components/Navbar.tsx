@@ -3,14 +3,16 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const navItems = [
-  { path: '/dashboard',  icon: '🏠', label: 'Dashboard',    section: 'main' },
-  { path: '/wallets',    icon: '👛', label: 'Wallets',       section: 'main' },
-  { path: '/fx',         icon: '💱', label: 'FX Exchange',   section: 'main' },
-  { path: '/settlements',icon: '🏦', label: 'Settlements',   section: 'main' },
-  { path: '/cards',      icon: '💳', label: 'Cards',         section: 'main' },
-  { path: '/kyc',        icon: '📋', label: 'KYC',           section: 'account' },
-  { path: '/credit',     icon: '📊', label: 'Credit Score',  section: 'account' },
-  { path: '/admin',      icon: '⚙️',  label: 'Admin',         section: 'admin', adminOnly: true },
+  { path: '/dashboard',     icon: '🏠', label: 'Dashboard',    section: 'main' },
+  { path: '/wallets',       icon: '👛', label: 'Wallets',       section: 'main' },
+  { path: '/fx',            icon: '💱', label: 'FX Exchange',   section: 'main' },
+  { path: '/settlements',   icon: '🏦', label: 'Settlements',   section: 'main' },
+  { path: '/cards',         icon: '💳', label: 'Cards',         section: 'main' },
+  { path: '/kyc',           icon: '📋', label: 'KYC',           section: 'account' },
+  { path: '/credit',        icon: '📊', label: 'Credit Score',  section: 'account' },
+  { path: '/api-keys',      icon: '🔑', label: 'API Keys',      section: 'account' },
+  { path: '/notifications', icon: '🔔', label: 'Notifications', section: 'account' },
+  { path: '/admin',         icon: '⚙️',  label: 'Admin',         section: 'admin', adminOnly: true },
 ];
 
 const Sidebar: React.FC = () => {

@@ -12,24 +12,39 @@ function formatDate(iso: string) {
   });
 }
 
+interface PendingKycDoc {
+  kyc_document_id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  doc_type: string;
+  file_url: string | null;
+  status: string;
+  verified_at: string | null;
+}
+
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [alerts, setAlerts] = useState<AMLAlert[]>([]);
+  const [pendingDocs, setPendingDocs] = useState<PendingKycDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [resolving, setResolving] = useState<string | null>(null);
+  const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      const [statsRes, usersRes, alertsRes] = await Promise.all([
+      const [statsRes, usersRes, alertsRes, complianceRes] = await Promise.all([
         apiClient.get<AdminStats>('/v1/admin/stats'),
         apiClient.get<{ users: User[]; total: number }>('/v1/admin/users?limit=10'),
         apiClient.get<{ alerts: AMLAlert[]; limit: number; offset: number }>('/v1/aml/alerts?status=pending'),
+        apiClient.get<{ kyc: { pending_documents: PendingKycDoc[] } }>('/v1/admin/compliance'),
       ]);
       setStats(statsRes.data);
       setUsers(usersRes.data.users ?? []);
       setAlerts(alertsRes.data.alerts ?? []);
+      setPendingDocs(complianceRes.data.kyc?.pending_documents ?? []);
     } catch {
       setError('Failed to load admin data. Ensure you have admin privileges.');
     } finally {
@@ -48,6 +63,18 @@ const AdminDashboard: React.FC = () => {
       alert('Failed to resolve alert.');
     } finally {
       setResolving(null);
+    }
+  };
+
+  const handleKycReview = async (docId: string, status: 'verified' | 'rejected') => {
+    setReviewingDoc(docId);
+    try {
+      await apiClient.put(`/v1/kyc/${docId}`, { status });
+      await fetchData();
+    } catch {
+      alert(`Failed to ${status === 'verified' ? 'approve' : 'reject'} document.`);
+    } finally {
+      setReviewingDoc(null);
     }
   };
 
@@ -298,6 +325,84 @@ const AdminDashboard: React.FC = () => {
                       {alert.status === 'resolved' && (
                         <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Resolved</span>
                       )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* KYC Document Review */}
+      <div className="card" style={{ marginTop: '24px' }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">📋 KYC Document Review</div>
+            <div className="card-subtitle">{pendingDocs.length} document(s) pending review</div>
+          </div>
+        </div>
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Document Type</th>
+                <th>File</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingDocs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="table-empty">
+                    ✅ No KYC documents pending review
+                  </td>
+                </tr>
+              ) : (
+                pendingDocs.map((doc) => (
+                  <tr key={doc.kyc_document_id}>
+                    <td style={{ fontWeight: 600 }}>{doc.full_name}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{doc.email}</td>
+                    <td style={{ textTransform: 'capitalize' }}>
+                      {doc.doc_type.replace(/_/g, ' ')}
+                    </td>
+                    <td>
+                      {doc.file_url ? (
+                        <a
+                          href={doc.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: '12px', color: 'var(--color-primary)' }}
+                        >
+                          View Doc 🔗
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-muted)' }}>No file</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="badge badge-warning">{doc.status}</span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => handleKycReview(doc.kyc_document_id, 'verified')}
+                          disabled={reviewingDoc === doc.kyc_document_id}
+                        >
+                          {reviewingDoc === doc.kyc_document_id ? <LoadingSpinner size="sm" /> : '✓ Approve'}
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleKycReview(doc.kyc_document_id, 'rejected')}
+                          disabled={reviewingDoc === doc.kyc_document_id}
+                        >
+                          ✕ Reject
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

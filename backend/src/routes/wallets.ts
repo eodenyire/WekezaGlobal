@@ -121,6 +121,29 @@ router.post('/:wallet_id/withdraw', async (req: AuthRequest, res: Response, next
   }
 });
 
+const TransferSchema = z.object({
+  destination_wallet_id: z.string().uuid(),
+  amount:                z.number().positive(),
+  metadata:              z.record(z.unknown()).optional(),
+});
+
+// ─── POST /v1/wallets/:wallet_id/transfer ────────────────────────────────────
+
+router.post('/:wallet_id/transfer', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = TransferSchema.parse(req.body);
+    const result = await walletService.transfer(
+      req.params.wallet_id,
+      body.destination_wallet_id,
+      body.amount,
+      body.metadata
+    );
+    res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /v1/wallets/:wallet_id/transactions ─────────────────────────────────
 
 router.get('/:wallet_id/transactions', async (req: AuthRequest, res: Response, next: NextFunction) => {

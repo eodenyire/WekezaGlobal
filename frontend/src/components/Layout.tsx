@@ -4,14 +4,16 @@ import Navbar from './Navbar';
 import { useAuth } from '../context/AuthContext';
 
 const topNavTitles: Record<string, string> = {
-  '/dashboard':   'Dashboard',
-  '/wallets':     'Wallets',
-  '/fx':          'FX Exchange',
-  '/settlements': 'Settlements',
-  '/cards':       'Cards',
-  '/kyc':         'KYC Verification',
-  '/credit':      'Credit Score',
-  '/admin':       'Admin Dashboard',
+  '/dashboard':     'Dashboard',
+  '/wallets':       'Wallets',
+  '/fx':            'FX Exchange',
+  '/settlements':   'Settlements',
+  '/cards':         'Cards',
+  '/kyc':           'KYC Verification',
+  '/credit':        'Credit Score',
+  '/api-keys':      'API Keys',
+  '/notifications': 'Notifications',
+  '/admin':         'Admin Dashboard',
 };
 
 const Layout: React.FC = () => {

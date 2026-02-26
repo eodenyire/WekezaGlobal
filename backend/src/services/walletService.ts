@@ -279,6 +279,90 @@ export async function debitWalletInternal(
   return balanceAfter;
 }
 
+export async function transfer(
+  sourceWalletId: string,
+  destinationWalletId: string,
+  amount: number,
+  metadata: Record<string, unknown> = {}
+): Promise<{ transaction: Transaction; source_balance_after: number; destination_balance_after: number }> {
+  if (amount <= 0) throw createError('Amount must be positive', 400);
+  if (sourceWalletId === destinationWalletId) throw createError('Source and destination wallets must differ', 400);
+
+  const sourceWallet = await findWalletById(sourceWalletId);
+  if (!sourceWallet) throw createError('Source wallet not found', 404);
+
+  const destWallet = await findWalletById(destinationWalletId);
+  if (!destWallet) throw createError('Destination wallet not found', 404);
+
+  if (sourceWallet.currency !== destWallet.currency) {
+    throw createError(
+      `Cannot transfer between wallets with different currencies (${sourceWallet.currency} → ${destWallet.currency}). Use FX convert instead.`,
+      400
+    );
+  }
+
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Lock source wallet and check balance
+    const { rows: lockRows } = await client.query<Wallet>(
+      'SELECT balance FROM wallets WHERE wallet_id = $1 FOR UPDATE',
+      [sourceWalletId]
+    );
+    const lockedBalance = parseFloat(lockRows[0].balance);
+    if (lockedBalance < amount) throw createError('Insufficient funds', 422);
+
+    // Insert transfer transaction
+    const { rows: txRows } = await client.query<Transaction>(
+      `INSERT INTO transactions (wallet_id, type, amount, currency, status, metadata)
+       VALUES ($1, 'transfer', $2, $3, 'completed', $4)
+       RETURNING *`,
+      [sourceWalletId, amount, sourceWallet.currency, JSON.stringify({ ...metadata, destination_wallet_id: destinationWalletId })]
+    );
+    const tx = txRows[0];
+
+    // Debit source wallet
+    const { rows: srcRows } = await client.query<Wallet>(
+      `UPDATE wallets SET balance = balance - $1, updated_at = NOW()
+       WHERE wallet_id = $2 RETURNING *`,
+      [amount, sourceWalletId]
+    );
+    const srcBalanceAfter = parseFloat(srcRows[0].balance);
+
+    // Credit destination wallet
+    const { rows: dstRows } = await client.query<Wallet>(
+      `UPDATE wallets SET balance = balance + $1, updated_at = NOW()
+       WHERE wallet_id = $2 RETURNING *`,
+      [amount, destinationWalletId]
+    );
+    const dstBalanceAfter = parseFloat(dstRows[0].balance);
+
+    // Ledger entries (debit source, credit destination)
+    await client.query(
+      `INSERT INTO ledger_entries (transaction_id, wallet_id, debit, balance_after)
+       VALUES ($1, $2, $3, $4)`,
+      [tx.transaction_id, sourceWalletId, amount, srcBalanceAfter]
+    );
+    await client.query(
+      `INSERT INTO ledger_entries (transaction_id, wallet_id, credit, balance_after)
+       VALUES ($1, $2, $3, $4)`,
+      [tx.transaction_id, destinationWalletId, amount, dstBalanceAfter]
+    );
+
+    await client.query('COMMIT');
+    await invalidateBalanceCache(sourceWalletId);
+    await invalidateBalanceCache(destinationWalletId);
+
+    return { transaction: tx, source_balance_after: srcBalanceAfter, destination_balance_after: dstBalanceAfter };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function creditWalletInternal(
   client: PoolClient,
   walletId: string,

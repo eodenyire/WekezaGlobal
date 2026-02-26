@@ -1,4 +1,4 @@
-# 📄 DOCUMENT 6: FULL PROPOSAL
+# 📄 FULL PROPOSAL
 
 **Project:** Wekeza Global Infrastructure (WGI)
 **Founding Liquidity Partner:** Wekeza Bank

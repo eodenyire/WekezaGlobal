@@ -1,4 +1,4 @@
-# 📄 DOCUMENT 3: MARKET OPPORTUNITY & RESEARCH </br>
+# 📄 MARKET OPPORTUNITY & RESEARCH </br>
 
 **Project:** Wekeza Global Infrastructure (WGI) </br>
 **Scope:** Pan-African </br>

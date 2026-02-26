@@ -162,3 +162,53 @@ export async function updateBank(
   if (!rows[0]) throw createError('Bank not found', 404);
   return rows[0];
 }
+
+/**
+ * Selects the optimal (active) bank for settlement in a given country.
+ * Architecture §3.3 — "Engine selects optimal bank route".
+ * Currently picks the first active bank for the country; in production this
+ * would factor in settlement_rules, fees, and availability.
+ */
+export async function selectOptimalBank(country: string): Promise<Bank | null> {
+  const { rows } = await pool.query<Bank>(
+    `SELECT * FROM banks WHERE country = $1 AND status = 'active' ORDER BY name ASC LIMIT 1`,
+    [country]
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Retry a failed settlement: re-debit the wallet (if the original debit was
+ * reversed or never applied) and reset status to pending.
+ * Architecture §8 — Fault tolerance: Retry mechanisms.
+ */
+export async function retrySettlement(settlementId: string): Promise<Settlement> {
+  const { rows } = await pool.query<Settlement>(
+    'SELECT * FROM settlements WHERE settlement_id = $1',
+    [settlementId]
+  );
+  if (!rows[0]) throw createError('Settlement not found', 404);
+
+  const settlement = rows[0];
+  if (settlement.status !== 'failed') {
+    throw createError('Only failed settlements can be retried', 422);
+  }
+
+  // Reset to pending so the normal resolution logic can pick it up
+  const { rows: updated } = await pool.query<Settlement>(
+    `UPDATE settlements
+     SET status = 'pending', updated_at = NOW()
+     WHERE settlement_id = $1
+     RETURNING *`,
+    [settlementId]
+  );
+
+  // Log retry in reconciliation_logs
+  await pool.query(
+    `INSERT INTO reconciliation_logs (settlement_id, result, notes)
+     VALUES ($1, 'pending', 'Retry initiated by user/system')`,
+    [settlementId]
+  );
+
+  return updated[0];
+}

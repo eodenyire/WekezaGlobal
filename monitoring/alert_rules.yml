@@ -42,3 +42,44 @@ groups:
         annotations:
           summary: "Backend memory usage > 500 MB"
           description: "The WGI backend process is consuming more than 500 MB of memory."
+
+  - name: wgi_settlement_alerts
+    interval: 60s
+    rules:
+      - alert: HighSettlementFailureRate
+        expr: >
+          rate(http_requests_total{job="wgi-backend",route="/v1/settlements",status="500"}[15m])
+          / rate(http_requests_total{job="wgi-backend",route="/v1/settlements"}[15m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High settlement failure rate (>10%)"
+          description: "More than 10% of settlement requests are failing. Check bank connectivity."
+
+  - name: wgi_aml_alerts
+    interval: 60s
+    rules:
+      - alert: AmlAlertSpike
+        expr: >
+          rate(http_requests_total{job="wgi-backend",route="/v1/aml/alerts"}[10m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Spike in AML alert creation"
+          description: "Unusual number of AML alerts being generated — possible fraud attack."
+
+  - name: wgi_fx_alerts
+    interval: 60s
+    rules:
+      - alert: FxConversionErrorSpike
+        expr: >
+          rate(http_requests_total{job="wgi-backend",route="/v1/fx/convert",status=~"4..|5.."}[5m]) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "FX conversion error spike"
+          # Threshold of 5 errors/s is based on normal P99 traffic; tune with actual baseline.
+          description: "Elevated error rate on /v1/fx/convert — check liquidity provider connectivity."

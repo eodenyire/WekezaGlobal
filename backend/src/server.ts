@@ -19,6 +19,8 @@ import creditRoutes     from './routes/credit';
 import adminRoutes      from './routes/admin';
 import notificationRoutes from './routes/notifications';
 import apiKeyRoutes     from './routes/apiKeys';
+import webhookRoutes    from './routes/webhooks';
+import sandboxRoutes    from './routes/sandbox';
 
 const app = express();
 
@@ -56,6 +58,8 @@ app.use('/v1/credit',         creditRoutes);
 app.use('/v1/admin',          adminRoutes);
 app.use('/v1/notifications',  notificationRoutes);
 app.use('/v1/api-keys',       apiKeyRoutes);
+app.use('/v1/webhooks',       webhookRoutes);
+app.use('/v1/sandbox',        sandboxRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

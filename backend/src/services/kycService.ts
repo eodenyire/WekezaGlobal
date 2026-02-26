@@ -123,3 +123,80 @@ export async function resolveAmlAlert(alertId: string): Promise<AmlAlert> {
   if (!rows[0]) throw createError('AML alert not found', 404);
   return rows[0];
 }
+
+/**
+ * Scans recent transactions for AML anomalies and creates alerts.
+ * Architecture §4 — "Compliance Monitoring → Continuous transaction log scan".
+ *
+ * Rules:
+ *  - HIGH: single transaction > $10,000
+ *  - MEDIUM: single transaction > $5,000
+ *  - LOW: rapid succession — more than 5 transactions in the last 5 minutes for the same wallet
+ *
+ * Returns a summary of newly created alerts.
+ */
+export async function scanTransactionsForAml(
+  lookbackMinutes = 60
+): Promise<{ scanned: number; alerts_created: number }> {
+  const since = new Date(Date.now() - lookbackMinutes * 60 * 1000);
+
+  // Pull recent completed transactions not yet covered by an AML alert
+  const { rows: txRows } = await pool.query<{
+    transaction_id: string;
+    wallet_id: string;
+    amount: string;
+    currency: string;
+    created_at: Date;
+  }>(
+    `SELECT t.transaction_id, t.wallet_id, t.amount, t.currency, t.created_at
+     FROM transactions t
+     LEFT JOIN aml_alerts a ON a.transaction_id = t.transaction_id
+     WHERE t.status = 'completed'
+       AND t.created_at >= $1
+       AND a.aml_alert_id IS NULL`,
+    [since]
+  );
+
+  if (txRows.length === 0) return { scanned: 0, alerts_created: 0 };
+
+  // Pre-fetch rapid-succession counts for ALL distinct wallets in a single query
+  // to avoid N+1 queries for the LOW-severity check.
+  const distinctWallets = [...new Set(txRows.map((t) => t.wallet_id))];
+  const { rows: rapidRows } = await pool.query<{ wallet_id: string; count: string }>(
+    `SELECT wallet_id, COUNT(*) AS count
+     FROM transactions
+     WHERE wallet_id = ANY($1)
+       AND status = 'completed'
+       AND created_at >= NOW() - INTERVAL '5 minutes'
+     GROUP BY wallet_id`,
+    [distinctWallets]
+  );
+  const rapidCountMap = new Map(rapidRows.map((r) => [r.wallet_id, parseInt(r.count, 10)]));
+
+  let alertsCreated = 0;
+
+  for (const tx of txRows) {
+    const amount = parseFloat(tx.amount);
+    let severity: 'high' | 'medium' | 'low' | null = null;
+
+    if (amount > 10000) {
+      severity = 'high';
+    } else if (amount > 5000) {
+      severity = 'medium';
+    } else if ((rapidCountMap.get(tx.wallet_id) ?? 0) > 5) {
+      severity = 'low';
+    }
+
+    if (severity) {
+      await pool.query(
+        `INSERT INTO aml_alerts (transaction_id, type, severity)
+         VALUES ($1, 'automated_scan', $2)
+         ON CONFLICT DO NOTHING`,
+        [tx.transaction_id, severity]
+      );
+      alertsCreated++;
+    }
+  }
+
+  return { scanned: txRows.length, alerts_created: alertsCreated };
+}

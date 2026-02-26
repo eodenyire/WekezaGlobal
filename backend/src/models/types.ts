@@ -172,6 +172,17 @@ export interface ApiKey {
   created_at: Date;
 }
 
+export interface Webhook {
+  webhook_id: string;
+  user_id: string;
+  url: string;
+  events: string[];
+  secret: string;
+  status: 'active' | 'inactive';
+  created_at: Date;
+  updated_at: Date;
+}
+
 // ------ JWT Payload -------
 
 export interface JwtPayload {

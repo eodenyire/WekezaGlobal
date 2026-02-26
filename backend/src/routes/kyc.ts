@@ -102,4 +102,15 @@ amlRouter.put('/alerts/:alert_id', requireRole('admin','compliance'), async (req
   }
 });
 
+// POST /v1/aml/scan  — Architecture §4: continuous compliance monitoring
+amlRouter.post('/scan', requireRole('admin','compliance'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const lookbackMinutes = parseInt(req.query.lookback_minutes as string) || 60;
+    const result = await kycService.scanTransactionsForAml(lookbackMinutes);
+    res.json({ ...result, lookback_minutes: lookbackMinutes });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

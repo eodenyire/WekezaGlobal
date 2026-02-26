@@ -95,4 +95,37 @@ router.post('/convert', async (req: AuthRequest, res: Response, next: NextFuncti
   }
 });
 
+// ─── GET /v1/fx/liquidity-providers ─────────────────────────────────────────
+// Architecture §3.2 — expose the available liquidity providers used for routing
+
+router.get('/liquidity-providers', async (_req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const providers = await fxService.getAvailableLiquidityProviders();
+    res.json({ providers });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /v1/fx/best-route/:from/:to  ────────────────────────────────────────
+// Architecture §3.2 — returns the optimal liquidity provider for a currency pair
+
+router.get('/best-route/:from/:to', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const route = await fxService.selectOptimalLiquidityRoute(
+      req.params.from as Currency,
+      req.params.to   as Currency
+    );
+    if (!route) {
+      // Fall back to system FX rate if no provider has this pair
+      const rate = await fxService.getRate(req.params.from as Currency, req.params.to as Currency);
+      res.json({ provider: 'WGI', rate: parseFloat(rate.rate), source: 'system_fx_table' });
+    } else {
+      res.json({ provider: route.provider_name, provider_id: route.provider_id, rate: route.rate, source: 'liquidity_provider' });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

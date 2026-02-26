@@ -1,7 +1,7 @@
 import { PoolClient } from 'pg';
 import { pool, redis } from '../database';
 import { findWalletById, findWalletByUserAndCurrency } from '../models/wallet';
-import { FxRate, FxTransaction, Currency, Wallet } from '../models/types';
+import { FxRate, FxTransaction, Currency, LiquidityProvider, Wallet } from '../models/types';
 import { createError } from '../middleware/errorHandler';
 import { config } from '../config';
 import {
@@ -72,6 +72,45 @@ export async function getRate(
   }
 
   return rows[0];
+}
+
+/**
+ * Queries available liquidity providers and returns the one offering the highest
+ * rate for the given currency pair (i.e. best conversion for the customer).
+ * Architecture §3.2: "Selects route with lowest cost & fastest execution".
+ * Falls back to the DB fx_rates table if no provider has a rate for the pair.
+ */
+export async function selectOptimalLiquidityRoute(
+  from: Currency,
+  to: Currency
+): Promise<{ provider_id: string; provider_name: string; rate: number } | null> {
+  const rateKey = `${from}_${to}`;
+
+  const { rows } = await pool.query<LiquidityProvider>(
+    `SELECT provider_id, name, rates, availability, created_at, updated_at
+     FROM liquidity_providers WHERE availability = TRUE ORDER BY name ASC`
+  );
+
+  let best: { provider_id: string; provider_name: string; rate: number } | null = null;
+
+  for (const provider of rows) {
+    const rates = provider.rates as Record<string, number>;
+    const rate = rates[rateKey];
+    if (typeof rate === 'number' && (!best || rate > best.rate)) {
+      best = { provider_id: provider.provider_id, provider_name: provider.name, rate };
+    }
+  }
+
+  return best;
+}
+
+/** Returns all available liquidity providers (Architecture §3.2) */
+export async function getAvailableLiquidityProviders(): Promise<LiquidityProvider[]> {
+  const { rows } = await pool.query<LiquidityProvider>(
+    `SELECT provider_id, name, rates, availability, created_at, updated_at
+     FROM liquidity_providers WHERE availability = TRUE ORDER BY name ASC`
+  );
+  return rows;
 }
 
 export interface ConvertInput {

@@ -207,7 +207,7 @@ const KYC: React.FC = () => {
                 <th>Status</th>
                 <th>File URL</th>
                 <th>Verified At</th>
-                <th>Submitted</th>
+                <th>Document ID</th>
               </tr>
             </thead>
             <tbody>
@@ -237,8 +237,10 @@ const KYC: React.FC = () => {
                       <td style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>
                         {doc.verified_at ? formatDate(doc.verified_at) : '—'}
                       </td>
-                      <td style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>
-                        {formatDate(doc.kyc_document_id)}
+                      <td>
+                        <code style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                          {doc.kyc_document_id.slice(0, 10)}…
+                        </code>
                       </td>
                     </tr>
                   );

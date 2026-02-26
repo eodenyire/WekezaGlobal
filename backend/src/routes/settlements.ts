@@ -13,6 +13,7 @@ const InitiateSchema = z.object({
   wallet_id: z.string().uuid(),
   bank_id:   z.string().uuid(),
   amount:    z.number().positive(),
+  currency:  z.string().optional(),   // informational; wallet currency is authoritative
 });
 
 // ─── GET /v1/settlements  (current user's settlements) ───────────────────────
@@ -47,7 +48,10 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => 
       body.bank_id,
       body.amount
     );
-    res.status(201).json(settlement);
+    res.status(201).json({
+      ...settlement,
+      timestamp: new Date(settlement.created_at).toISOString(),
+    });
   } catch (err) {
     next(err);
   }
@@ -58,7 +62,12 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => 
 router.get('/:settlement_id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const settlement = await settlementService.getSettlement(req.params.settlement_id);
-    res.json(settlement);
+    res.json({
+      ...settlement,
+      settled_at: settlement.status === 'completed'
+        ? new Date(settlement.updated_at).toISOString()
+        : null,
+    });
   } catch (err) {
     next(err);
   }

@@ -53,9 +53,11 @@ export async function getUserWallets(userId: string): Promise<Wallet[]> {
   return findWalletsByUserId(userId);
 }
 
-export async function getBalance(walletId: string): Promise<{ wallet_id: string; balance: number; currency: string; cached: boolean }> {
+export async function getBalance(walletId: string): Promise<{ wallet_id: string; balance: number; currency: string; last_updated: string; cached: boolean }> {
   const wallet = await findWalletById(walletId);
   if (!wallet) throw createError('Wallet not found', 404);
+
+  const lastUpdated = new Date(wallet.updated_at).toISOString();
 
   // Try Redis cache first
   try {
@@ -66,6 +68,7 @@ export async function getBalance(walletId: string): Promise<{ wallet_id: string;
           wallet_id: walletId,
           balance: parseFloat(cached),
           currency: wallet.currency,
+          last_updated: lastUpdated,
           cached: true,
         };
       }
@@ -85,7 +88,7 @@ export async function getBalance(walletId: string): Promise<{ wallet_id: string;
     // Non-fatal
   }
 
-  return { wallet_id: walletId, balance, currency: wallet.currency, cached: false };
+  return { wallet_id: walletId, balance, currency: wallet.currency, last_updated: lastUpdated, cached: false };
 }
 
 export async function deposit(

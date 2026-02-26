@@ -57,8 +57,22 @@ router.post('/token', async (req: Request, res: Response, next: NextFunction) =>
     const body = TokenSchema.parse(req.body);
     const result = await authService.clientCredentialsToken(body);
     res.json(result);
-  } catch (err) {
-    next(err);
+  } catch (err: unknown) {
+    // RFC 6749 §5.2 — OAuth2 error response
+    const status = (err as { statusCode?: number })?.statusCode ?? 400;
+    const description = (err as Error)?.message ?? 'Client authentication failed';
+
+    // Map to the appropriate OAuth2 error code
+    let oauthError = 'invalid_client';
+    if (description.toLowerCase().includes('grant_type') ||
+        description.toLowerCase().includes('grant type')) {
+      oauthError = 'unsupported_grant_type';
+    }
+
+    res.status(status).json({
+      error: oauthError,
+      error_description: description,
+    });
   }
 });
 

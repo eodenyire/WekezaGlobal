@@ -44,6 +44,7 @@ export interface Settlement {
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed';
+  settled_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,8 +53,10 @@ export interface Card {
   card_id: string;
   wallet_id: string;
   card_type: 'virtual' | 'physical';
+  type: 'virtual' | 'physical';   // spec alias for card_type
   status: 'active' | 'blocked' | 'expired';
   spending_limit: number;
+  limit: number;                  // spec alias for spending_limit
   created_at: string;
 }
 

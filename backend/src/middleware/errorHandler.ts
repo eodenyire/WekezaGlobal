@@ -42,6 +42,7 @@ function httpStatusName(code: number): string {
     422: 'UnprocessableEntity',
     429: 'TooManyRequests',
     500: 'InternalServerError',
+    503: 'ServiceUnavailable',
   };
   return names[code] ?? 'Error';
 }

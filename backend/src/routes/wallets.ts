@@ -16,12 +16,22 @@ const CreateWalletSchema = z.object({
 });
 
 const DepositSchema = z.object({
-  amount:   z.number().positive(),
-  metadata: z.record(z.unknown()).optional(),
+  amount:    z.number().positive(),
+  currency:  z.string().optional(),  // informational; wallet currency is authoritative
+  reference: z.string().optional(),
+  metadata:  z.record(z.unknown()).optional(),
 });
 
 const WithdrawSchema = z.object({
-  amount:   z.number().positive(),
+  amount:       z.number().positive(),
+  currency:     z.string().optional(),
+  bank_account: z.object({
+    bank_id:        z.string().optional(),
+    account_number: z.string().optional(),
+    account_name:   z.string().optional(),
+  }).optional(),
+  // Legacy top-level bank_id still accepted
+  bank_id:  z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 
@@ -94,12 +104,20 @@ router.get('/:wallet_id/balance', async (req: AuthRequest, res: Response, next: 
 router.post('/:wallet_id/deposit', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const body = DepositSchema.parse(req.body);
-    const result = await walletService.deposit(
-      req.params.wallet_id,
-      body.amount,
-      body.metadata
-    );
-    res.status(201).json(result);
+    // Merge reference into metadata for storage
+    const metadata: Record<string, unknown> = { ...(body.metadata ?? {}) };
+    if (body.reference) metadata.reference = body.reference;
+
+    const result = await walletService.deposit(req.params.wallet_id, body.amount, metadata);
+    const tx = result.transaction;
+    res.status(201).json({
+      transaction_id: tx.transaction_id,
+      wallet_id:      tx.wallet_id,
+      amount:         parseFloat(tx.amount),
+      currency:       tx.currency,
+      status:         tx.status,
+      timestamp:      new Date(tx.created_at).toISOString(),
+    });
   } catch (err) {
     next(err);
   }
@@ -110,12 +128,26 @@ router.post('/:wallet_id/deposit', async (req: AuthRequest, res: Response, next:
 router.post('/:wallet_id/withdraw', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const body = WithdrawSchema.parse(req.body);
-    const result = await walletService.withdraw(
-      req.params.wallet_id,
-      body.amount,
-      body.metadata
-    );
-    res.status(201).json(result);
+    // Merge bank_account and bank_id into metadata
+    const metadata: Record<string, unknown> = { ...(body.metadata ?? {}) };
+    if (body.bank_account) {
+      if (body.bank_account.bank_id)        metadata.bank_id        = body.bank_account.bank_id;
+      if (body.bank_account.account_number) metadata.account_number = body.bank_account.account_number;
+      if (body.bank_account.account_name)   metadata.account_name   = body.bank_account.account_name;
+    } else if (body.bank_id) {
+      metadata.bank_id = body.bank_id;
+    }
+
+    const result = await walletService.withdraw(req.params.wallet_id, body.amount, metadata);
+    const tx = result.transaction;
+    res.status(201).json({
+      transaction_id: tx.transaction_id,
+      wallet_id:      tx.wallet_id,
+      amount:         parseFloat(tx.amount),
+      currency:       tx.currency,
+      status:         tx.status,
+      timestamp:      new Date(tx.created_at).toISOString(),
+    });
   } catch (err) {
     next(err);
   }

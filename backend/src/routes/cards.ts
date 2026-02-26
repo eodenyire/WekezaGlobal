@@ -11,10 +11,22 @@ router.use(authenticate);
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
 const CreateCardSchema = z.object({
-  wallet_id:     z.string().uuid(),
-  card_type:     z.enum(['virtual','physical']),
+  wallet_id:      z.string().uuid(),
+  // Spec field names
+  type:           z.enum(['virtual','physical']).optional(),
+  limit:          z.number().positive().optional(),
+  // Legacy field names
+  card_type:      z.enum(['virtual','physical']).optional(),
   spending_limit: z.number().positive().optional(),
-});
+}).superRefine((data, ctx) => {
+  if (!data.type && !data.card_type) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'type (or card_type) is required', path: ['type'] });
+  }
+}).transform((data) => ({
+  wallet_id:      data.wallet_id,
+  card_type:      (data.type ?? data.card_type) as 'virtual' | 'physical',
+  spending_limit: data.limit ?? data.spending_limit,
+})) as z.ZodType<{ wallet_id: string; card_type: 'virtual' | 'physical'; spending_limit?: number }>;
 
 const UpdateStatusSchema = z.object({
   status: z.enum(['active','blocked','expired']),
@@ -41,7 +53,12 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => 
       body.card_type,
       body.spending_limit
     );
-    res.status(201).json(card);
+    res.status(201).json({
+      ...card,
+      // Spec-compliant aliases
+      type:  card.card_type,
+      limit: parseFloat(card.spending_limit),
+    });
   } catch (err) {
     next(err);
   }

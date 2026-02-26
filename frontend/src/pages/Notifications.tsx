@@ -1,17 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
-
-interface Notification {
-  notification_id: string;
-  user_id: string;
-  type: string;
-  title: string;
-  message: string;
-  is_read: boolean;
-  metadata: Record<string, unknown>;
-  created_at: string;
-}
+import { Notification } from '../types';
 
 const TYPE_ICONS: Record<string, string> = {
   deposit:    '💰',

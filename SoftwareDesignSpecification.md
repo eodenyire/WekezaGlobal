@@ -1,4 +1,4 @@
-# 📄 DOCUMENT 12: SOFTWARE DESIGN SPECIFICATION (SDS) </br>
+# 📄 SOFTWARE DESIGN SPECIFICATION (SDS) </br>
 
 **Project:** Wekeza Global Infrastructure (WGI) </br>
 **Founding Liquidity Partner:** Wekeza Bank </br>

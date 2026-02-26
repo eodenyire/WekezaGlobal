@@ -112,3 +112,29 @@ export interface Notification {
   metadata: Record<string, unknown>;
   created_at: string;
 }
+
+export interface ApiKey {
+  api_key_id: string;
+  user_id: string;
+  name: string | null;
+  /** The API key value (prefixed token) returned by the server */
+  api_key: string;
+  status: string;
+  created_at: string;
+}
+
+export interface Webhook {
+  webhook_id: string;
+  user_id: string;
+  url: string;
+  events: string[];
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+/** Response from POST /v1/webhooks — includes a one-time signing secret */
+export interface WebhookCreationResponse extends Webhook {
+  /** HMAC-SHA256 signing secret. Shown only once at creation time. */
+  secret: string;
+}

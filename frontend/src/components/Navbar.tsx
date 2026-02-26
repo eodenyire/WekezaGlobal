@@ -11,6 +11,7 @@ const navItems = [
   { path: '/kyc',           icon: '📋', label: 'KYC',           section: 'account' },
   { path: '/credit',        icon: '📊', label: 'Credit Score',  section: 'account' },
   { path: '/api-keys',      icon: '🔑', label: 'API Keys',      section: 'account' },
+  { path: '/webhooks',      icon: '🔗', label: 'Webhooks',      section: 'account' },
   { path: '/notifications', icon: '🔔', label: 'Notifications', section: 'account' },
   { path: '/admin',         icon: '⚙️',  label: 'Admin',         section: 'admin', adminOnly: true },
 ];

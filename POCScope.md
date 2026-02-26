@@ -1,4 +1,4 @@
-# 📄 DOCUMENT 5: POC SCOPE – FULL IMPLEMENTATION
+# 📄 POC SCOPE – FULL IMPLEMENTATION
 
 **Project:** Wekeza Global Infrastructure (WGI)
 **Founding Liquidity Partner:** Wekeza Bank

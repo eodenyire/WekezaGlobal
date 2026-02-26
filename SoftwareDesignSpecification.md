@@ -4,7 +4,7 @@
 **Founding Liquidity Partner:** Wekeza Bank </br>
 **Scope:** Pan-African, Full Implementation </br>
 
----
+----
 
 ## 1️⃣ Objective
 

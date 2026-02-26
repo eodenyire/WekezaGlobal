@@ -38,11 +38,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const login = async (email: string, password: string) => {
-    const response = await apiClient.post<{ token: string; user: User }>('/auth/login', {
+    const response = await apiClient.post<{ access_token: string; user: User }>('/auth/login', {
       email,
       password,
     });
-    setToken(response.data.token);
+    setToken(response.data.access_token);
     setUser(response.data.user);
   };
 

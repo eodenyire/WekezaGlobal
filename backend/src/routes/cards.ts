@@ -20,6 +20,17 @@ const UpdateStatusSchema = z.object({
   status: z.enum(['active','blocked','expired']),
 });
 
+// ─── GET /v1/cards  (current user's cards) ───────────────────────────────────
+
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const cards = await cardService.getUserCards(req.user!.userId);
+    res.json({ cards });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── POST /v1/cards ──────────────────────────────────────────────────────────
 
 router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {

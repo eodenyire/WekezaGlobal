@@ -23,13 +23,13 @@ const AdminDashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       const [statsRes, usersRes, alertsRes] = await Promise.all([
-        apiClient.get<AdminStats>('/admin/stats'),
-        apiClient.get<User[]>('/admin/users?limit=10'),
-        apiClient.get<AMLAlert[]>('/admin/aml-alerts?status=pending'),
+        apiClient.get<AdminStats>('/v1/admin/stats'),
+        apiClient.get<{ users: User[]; total: number }>('/v1/admin/users?limit=10'),
+        apiClient.get<{ alerts: AMLAlert[]; limit: number; offset: number }>('/v1/aml/alerts?status=pending'),
       ]);
       setStats(statsRes.data);
-      setUsers(usersRes.data);
-      setAlerts(alertsRes.data);
+      setUsers(usersRes.data.users ?? []);
+      setAlerts(alertsRes.data.alerts ?? []);
     } catch {
       setError('Failed to load admin data. Ensure you have admin privileges.');
     } finally {
@@ -42,7 +42,7 @@ const AdminDashboard: React.FC = () => {
   const handleResolveAlert = async (alertId: string) => {
     setResolving(alertId);
     try {
-      await apiClient.patch(`/admin/aml-alerts/${alertId}`, { status: 'resolved' });
+      await apiClient.put(`/v1/aml/alerts/${alertId}`, { status: 'resolved' });
       await fetchData();
     } catch {
       alert('Failed to resolve alert.');

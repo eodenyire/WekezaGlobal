@@ -38,14 +38,15 @@ const Settlements: React.FC = () => {
   const fetchData = async () => {
     try {
       const [sRes, wRes, bRes] = await Promise.all([
-        apiClient.get<Settlement[]>('/settlements'),
-        apiClient.get<Wallet[]>('/wallets'),
-        apiClient.get<Bank[]>('/banks').catch(() => ({ data: [] as Bank[] })),
+        apiClient.get<{ settlements: Settlement[] }>('/v1/settlements'),
+        apiClient.get<{ wallets: Wallet[] }>('/v1/wallets'),
+        apiClient.get<{ banks: Bank[] }>('/v1/banks').catch(() => ({ data: { banks: [] as Bank[] } })),
       ]);
-      setSettlements(sRes.data);
-      setWallets(wRes.data);
-      setBanks(bRes.data);
-      if (wRes.data.length > 0) { setWalletId(wRes.data[0].wallet_id); setCurrency(wRes.data[0].currency); }
+      setSettlements(sRes.data.settlements ?? []);
+      setWallets(wRes.data.wallets ?? []);
+      setBanks(bRes.data.banks ?? []);
+      const walletsList = wRes.data.wallets ?? [];
+      if (walletsList.length > 0) { setWalletId(walletsList[0].wallet_id); setCurrency(walletsList[0].currency); }
     } catch {
       setError('Failed to load settlements.');
     } finally {
@@ -64,7 +65,7 @@ const Settlements: React.FC = () => {
     if (!bankId) { setFormMsg({ type: 'error', text: 'Select a bank.' }); return; }
     setSubmitting(true);
     try {
-      await apiClient.post('/settlements', { wallet_id: walletId, bank_id: bankId, amount: amt, currency });
+      await apiClient.post('/v1/settlements', { wallet_id: walletId, bank_id: bankId, amount: amt, currency });
       setFormMsg({ type: 'success', text: 'Settlement initiated successfully!' });
       setAmount(''); setBankId('');
       setShowForm(false);

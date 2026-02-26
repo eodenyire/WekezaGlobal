@@ -8,7 +8,7 @@ import { errorHandler } from './middleware/errorHandler';
 
 // ─── Route imports ───────────────────────────────────────────────────────────
 import authRoutes       from './routes/auth';
-import walletRoutes     from './routes/wallets';
+import walletRoutes, { transactionsRouter } from './routes/wallets';
 import fxRoutes         from './routes/fx';
 import settlementRoutes from './routes/settlements';
 import bankRoutes       from './routes/banks';
@@ -36,6 +36,7 @@ app.get('/health', (_req: Request, res: Response) => {
 // ─── API routes ──────────────────────────────────────────────────────────────
 app.use('/auth',           authRoutes);
 app.use('/v1/wallets',     walletRoutes);
+app.use('/v1/transactions', transactionsRouter);
 app.use('/v1/fx',          fxRoutes);
 app.use('/v1/settlements', settlementRoutes);
 app.use('/v1/banks',       bankRoutes);

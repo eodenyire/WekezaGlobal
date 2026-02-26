@@ -3,8 +3,18 @@ import { CreditScore } from '../models/types';
 import { createError } from '../middleware/errorHandler';
 
 const BASE_SCORE = 500;
-const MAX_SCORE = 850;
-const MIN_SCORE = 300;
+const MAX_SCORE  = 850;
+const MIN_SCORE  = 300;
+
+// Scoring weights
+const TX_WEIGHT         = 2;   // points per completed transaction
+const SETTLEMENT_WEIGHT = 5;   // points per completed settlement
+const FX_WEIGHT         = 3;   // points per FX conversion
+
+// Per-factor caps
+const TX_CAP         = 200;
+const SETTLEMENT_CAP = 100;
+const FX_CAP         = 50;
 
 async function computeScore(userId: string): Promise<{
   score: number;
@@ -41,9 +51,9 @@ async function computeScore(userId: string): Promise<{
   );
   const fxConversions = parseInt(fxRows[0]?.count ?? '0', 10);
 
-  const txPoints         = Math.min(200, txCount * 2);
-  const settlementPoints = Math.min(100, settlements * 5);
-  const fxPoints         = Math.min(50, fxConversions * 3);
+  const txPoints         = Math.min(TX_CAP,         txCount     * TX_WEIGHT);
+  const settlementPoints = Math.min(SETTLEMENT_CAP, settlements * SETTLEMENT_WEIGHT);
+  const fxPoints         = Math.min(FX_CAP,         fxConversions * FX_WEIGHT);
 
   const raw   = BASE_SCORE + txPoints + settlementPoints + fxPoints;
   const score = Math.min(MAX_SCORE, Math.max(MIN_SCORE, raw));

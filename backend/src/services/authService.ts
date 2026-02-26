@@ -6,7 +6,7 @@ import { findUserByEmail } from '../models/user';
 import { User, UserRole, JwtPayload, PublicUser } from '../models/types';
 import { createError } from '../middleware/errorHandler';
 
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = config.bcryptSaltRounds;
 
 export interface RegisterInput {
   full_name: string;

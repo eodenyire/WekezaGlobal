@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { redis } from '../database';
+import { config } from '../config';
 
-const WINDOW_SECONDS = 15 * 60; // 15 minutes
-const MAX_REQUESTS = 100;
+const WINDOW_SECONDS = config.rateLimitWindowSeconds;
+const MAX_REQUESTS   = config.rateLimitMaxRequests;
 
 export async function rateLimiter(
   req: Request,

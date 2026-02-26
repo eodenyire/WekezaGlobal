@@ -6,6 +6,8 @@ import { Wallet, Transaction, Currency } from '../models/types';
 import { createError } from '../middleware/errorHandler';
 
 const BALANCE_TTL = 300; // 5 minutes
+const AML_MEDIUM_THRESHOLD = 10_000; // flag withdrawals above this
+const AML_HIGH_THRESHOLD   = 50_000; // escalate to high severity above this
 
 function balanceCacheKey(walletId: string): string {
   return `wallet:${walletId}:balance`;
@@ -195,12 +197,12 @@ export async function withdraw(
       [tx.transaction_id, walletId, amount, balanceAfter]
     );
 
-    // Flag large withdrawals as AML alerts (> 10 000 in any currency)
-    if (amount > 10000) {
+    // Flag large withdrawals as AML alerts
+    if (amount > AML_MEDIUM_THRESHOLD) {
       await client.query(
         `INSERT INTO aml_alerts (transaction_id, type, severity)
          VALUES ($1, 'large_withdrawal', $2)`,
-        [tx.transaction_id, amount > 50000 ? 'high' : 'medium']
+        [tx.transaction_id, amount > AML_HIGH_THRESHOLD ? 'high' : 'medium']
       );
     }
 

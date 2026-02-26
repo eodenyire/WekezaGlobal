@@ -2,6 +2,9 @@ import { pool } from '../database';
 import { findWalletById } from '../models/wallet';
 import { Card, CardTransaction, CardStatus } from '../models/types';
 import { createError } from '../middleware/errorHandler';
+import { config } from '../config';
+
+const DEFAULT_SPENDING_LIMIT = config.defaultCardSpendingLimit;
 
 export async function createCard(
   walletId: string,
@@ -11,7 +14,7 @@ export async function createCard(
   const wallet = await findWalletById(walletId);
   if (!wallet) throw createError('Wallet not found', 404);
 
-  const limit = spendingLimit ?? 5000;
+  const limit = spendingLimit ?? DEFAULT_SPENDING_LIMIT;
   if (limit <= 0) throw createError('Spending limit must be positive', 400);
 
   const { rows } = await pool.query<Card>(

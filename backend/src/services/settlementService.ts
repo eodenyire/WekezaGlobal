@@ -2,9 +2,10 @@ import { pool } from '../database';
 import { findWalletById } from '../models/wallet';
 import { Settlement, Bank } from '../models/types';
 import { createError } from '../middleware/errorHandler';
+import { config } from '../config';
 import { withdraw } from './walletService';
 
-const SETTLEMENT_COMPLETION_MS = 2 * 60 * 1000; // 2 minutes
+const SETTLEMENT_COMPLETION_MS = config.settlementCompletionMs;
 
 /** Simulate async completion: pending → completed after 2 minutes. */
 function resolveStatus(s: Settlement): Settlement {

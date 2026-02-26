@@ -3,6 +3,7 @@ import { pool, redis } from '../database';
 import { findWalletById, findWalletByUserAndCurrency } from '../models/wallet';
 import { FxRate, FxTransaction, Currency, Wallet } from '../models/types';
 import { createError } from '../middleware/errorHandler';
+import { config } from '../config';
 import {
   debitWalletInternal,
   creditWalletInternal,
@@ -92,7 +93,7 @@ export interface ConvertResult {
   target_balance_after: number;
 }
 
-const FX_FEE_RATE = 0.005; // 0.5%
+const FX_FEE_RATE = config.fxFeeRate;
 
 export async function convert(input: ConvertInput): Promise<ConvertResult> {
   const { source_wallet_id, amount, from_currency, to_currency, user_id } = input;

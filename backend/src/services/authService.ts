@@ -142,3 +142,42 @@ export async function getProfile(userId: string): Promise<PublicUser> {
   const { password_hash: _ph, ...publicUser } = user;
   return publicUser;
 }
+
+export interface UpdateProfileInput {
+  full_name?: string;
+  phone_number?: string;
+}
+
+export async function updateProfile(
+  userId: string,
+  input: UpdateProfileInput
+): Promise<PublicUser> {
+  if (!input.full_name && !input.phone_number) {
+    throw createError('At least one field (full_name, phone_number) is required', 400);
+  }
+
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (input.full_name !== undefined) {
+    fields.push(`full_name = $${idx++}`);
+    values.push(input.full_name);
+  }
+  if (input.phone_number !== undefined) {
+    fields.push(`phone_number = $${idx++}`);
+    values.push(input.phone_number);
+  }
+  fields.push(`updated_at = NOW()`);
+  values.push(userId);
+
+  const { rows } = await pool.query<User>(
+    `UPDATE users SET ${fields.join(', ')} WHERE user_id = $${idx} RETURNING *`,
+    values
+  );
+  if (!rows[0]) throw createError('User not found', 404);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { password_hash: _ph, ...publicUser } = rows[0];
+  return publicUser;
+}

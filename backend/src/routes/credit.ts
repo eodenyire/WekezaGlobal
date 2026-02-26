@@ -28,4 +28,17 @@ router.post('/:user_id/recalculate', async (req: AuthRequest, res: Response, nex
   }
 });
 
+// ─── GET /v1/credit/:user_id/activity  (SDS §2.7 — credit intelligence logs) ─
+
+router.get('/:user_id/activity', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const limit  = parseInt(req.query.limit  as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    const logs = await creditService.getCreditActivityLogs(req.params.user_id, limit, offset);
+    res.json({ logs, limit, offset });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

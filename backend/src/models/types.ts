@@ -85,7 +85,17 @@ export interface Bank {
   name: string;
   country: string;
   api_endpoint: string | null;
+  settlement_rules: Record<string, unknown>;
   status: 'active' | 'inactive';
+}
+
+export interface LiquidityProvider {
+  provider_id: string;
+  name: string;
+  rates: Record<string, unknown>;
+  availability: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface Settlement {
@@ -142,6 +152,15 @@ export interface CreditScore {
   score: string;
   factors: Record<string, unknown>;
   last_updated: Date;
+}
+
+export interface CreditActivityLog {
+  log_id: string;
+  user_id: string;
+  transaction_id: string | null;
+  factor: string;
+  delta: string;
+  created_at: Date;
 }
 
 export interface ApiKey {

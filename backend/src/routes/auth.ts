@@ -87,4 +87,21 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response, next: Ne
   }
 });
 
+// ─── PUT /auth/me  (update profile — SDS §2.6) ───────────────────────────────
+
+const UpdateProfileSchema = z.object({
+  full_name:    z.string().min(2).optional(),
+  phone_number: z.string().optional(),
+});
+
+router.put('/me', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = UpdateProfileSchema.parse(req.body);
+    const profile = await authService.updateProfile(req.user!.userId, body);
+    res.json(profile);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

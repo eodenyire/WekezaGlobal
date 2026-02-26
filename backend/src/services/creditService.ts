@@ -1,5 +1,5 @@
 import { pool } from '../database';
-import { CreditScore } from '../models/types';
+import { CreditScore, CreditActivityLog } from '../models/types';
 import { createError } from '../middleware/errorHandler';
 
 const BASE_SCORE = 500;
@@ -111,5 +111,35 @@ export async function recalculateCreditScore(userId: string): Promise<CreditScor
     [userId, score, JSON.stringify(factors)]
   );
 
+  // Log credit activity factors for analytics (SDS §2.7)
+  await pool.query(
+    `INSERT INTO credit_activity_logs (user_id, factor, delta)
+     VALUES ($1, 'transaction_points', $2),
+            ($1, 'settlement_points', $3),
+            ($1, 'fx_points', $4)`,
+    [userId, factors.tx_points, factors.settlement_points, factors.fx_points]
+  );
+
   return rows[0];
+}
+
+export async function getCreditActivityLogs(
+  userId: string,
+  limit = 50,
+  offset = 0
+): Promise<CreditActivityLog[]> {
+  const { rows: uRows } = await pool.query(
+    'SELECT user_id FROM users WHERE user_id = $1',
+    [userId]
+  );
+  if (!uRows[0]) throw createError('User not found', 404);
+
+  const { rows } = await pool.query<CreditActivityLog>(
+    `SELECT * FROM credit_activity_logs
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [userId, limit, offset]
+  );
+  return rows;
 }

@@ -110,3 +110,55 @@ export async function getBankById(bankId: string): Promise<Bank> {
   if (!rows[0]) throw createError('Bank not found', 404);
   return rows[0];
 }
+
+export interface CreateBankInput {
+  name: string;
+  country: string;
+  api_endpoint?: string;
+  settlement_rules?: Record<string, unknown>;
+}
+
+export async function createBank(input: CreateBankInput): Promise<Bank> {
+  const { rows } = await pool.query<Bank>(
+    `INSERT INTO banks (name, country, api_endpoint, settlement_rules, status)
+     VALUES ($1, $2, $3, $4, 'active')
+     RETURNING *`,
+    [
+      input.name,
+      input.country,
+      input.api_endpoint ?? null,
+      input.settlement_rules ?? {},
+    ]
+  );
+  return rows[0];
+}
+
+export async function updateBank(
+  bankId: string,
+  updates: Partial<Pick<Bank, 'name' | 'country' | 'api_endpoint' | 'status'>> & {
+    settlement_rules?: Record<string, unknown>;
+  }
+): Promise<Bank> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (updates.name !== undefined)         { fields.push(`name = $${idx++}`);             values.push(updates.name); }
+  if (updates.country !== undefined)      { fields.push(`country = $${idx++}`);          values.push(updates.country); }
+  if (updates.api_endpoint !== undefined) { fields.push(`api_endpoint = $${idx++}`);     values.push(updates.api_endpoint); }
+  if (updates.status !== undefined)       { fields.push(`status = $${idx++}`);           values.push(updates.status); }
+  if (updates.settlement_rules !== undefined) {
+    fields.push(`settlement_rules = $${idx++}`);
+    values.push(updates.settlement_rules);
+  }
+
+  if (fields.length === 0) throw createError('No update fields provided', 400);
+
+  values.push(bankId);
+  const { rows } = await pool.query<Bank>(
+    `UPDATE banks SET ${fields.join(', ')} WHERE bank_id = $${idx} RETURNING *`,
+    values
+  );
+  if (!rows[0]) throw createError('Bank not found', 404);
+  return rows[0];
+}

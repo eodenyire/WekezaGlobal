@@ -1,5 +1,4 @@
-# 📄 DOCUMENT 7: </br>
- BUSINESS REQUIREMENTS DOCUMENT (BRD) </br>
+# 📄 BUSINESS REQUIREMENTS DOCUMENT </br>
 
 **Project:** Wekeza Global Infrastructure (WGI) </br>
 **Founding Liquidity Partner:** Wekeza Bank </br>

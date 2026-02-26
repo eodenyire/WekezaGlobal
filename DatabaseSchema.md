@@ -1,7 +1,7 @@
 # 📄 DATABASE SCHEMA DESIGN
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Databases:** PostgreSQL (primary transactional DB), MySQL (analytics & reporting), Redis (caching for performance)
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Databases:** PostgreSQL (primary transactional DB), MySQL (analytics & reporting), Redis (caching for performance)</br>
 
 ---
 

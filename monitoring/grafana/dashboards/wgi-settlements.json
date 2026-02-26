@@ -1,0 +1,182 @@
+{
+  "id": null,
+  "uid": "wgi-settlements",
+  "title": "WGI Settlement Engine",
+  "description": "Settlement success/failure rates, reconciliation, and bank routing — Architecture §9",
+  "tags": ["wgi", "settlement", "banks"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Settlements Created (last 5m)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(http_requests_total{route=\"/v1/settlements\",status=\"201\"}[5m])",
+          "legendFormat": "Created",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Settlement Failure Rate (5m)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.05 }, { "color": "red", "value": 0.1 }] },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=\"/v1/settlements\",status=\"500\"}[5m]) / (rate(http_requests_total{route=\"/v1/settlements\"}[5m]) + 0.001)",
+          "legendFormat": "Failure Rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Settlement Retries (last 5m)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 10 }] }, "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(http_requests_total{route=~\"/v1/settlements/.*/retry\",status=\"200\"}[5m])",
+          "legendFormat": "Retries",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Auto-Route Settlements (last 5m)",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(http_requests_total{route=\"/v1/settlements/auto\",status=\"201\"}[5m])",
+          "legendFormat": "Auto-Route",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Settlement Request Rate (req/s)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15, "spanNulls": false } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=\"/v1/settlements\",status=\"201\"}[2m])",
+          "legendFormat": "Successful",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=\"/v1/settlements\",status=~\"4..|5..\"}[2m])",
+          "legendFormat": "Failed",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Settlement Latency p95 (seconds)",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "spanNulls": false } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{route=\"/v1/settlements\"}[5m]))",
+          "legendFormat": "p95 latency",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{route=\"/v1/settlements\"}[5m]))",
+          "legendFormat": "p50 latency",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Bank API Requests by Route",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "spanNulls": false } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=~\"/v1/banks.*\"}[2m])",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Reconciliation Log Requests",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "spanNulls": false } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=~\"/v1/settlements/.*/reconciliation.*\"}[2m])",
+          "legendFormat": "Reconciliation",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

@@ -143,3 +143,74 @@ describe('getCreditScore — cache path', () => {
     expect((mockPool.query as jest.Mock).mock.calls.length).toBe(2);
   });
 });
+
+// ── generateCreditReport (Architecture §3.7) ─────────────────────────────────
+
+import { generateCreditReport } from './creditService';
+
+describe('generateCreditReport — risk tier classification', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  function mockReportQueries(
+    kycStatus: string,
+    score: number,
+    txCount: number,
+    settlements: number,
+    fxConversions: number,
+    activeWallets: number
+  ) {
+    // 1. user check
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ user_id: 'user-1', kyc_status: kycStatus }] })
+      // getCreditScore → getCreditActivityLogs → user check
+      .mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] })
+      // getCreditScore → SELECT credit_scores → return existing
+      .mockResolvedValueOnce({ rows: [{ credit_score_id: 'cs-1', user_id: 'user-1', score: String(score), factors: {}, last_updated: new Date() }] })
+      // summary stats
+      .mockResolvedValueOnce({ rows: [{ count: String(txCount) }] })
+      .mockResolvedValueOnce({ rows: [{ count: String(settlements) }] })
+      .mockResolvedValueOnce({ rows: [{ count: String(fxConversions) }] })
+      .mockResolvedValueOnce({ rows: [{ count: String(activeWallets) }] });
+  }
+
+  it('returns tier A for score >= 750 with verified KYC and enables lending', async () => {
+    mockReportQueries('verified', 780, 50, 10, 5, 2);
+    const report = await generateCreditReport('user-1');
+    expect(report.risk_tier).toMatch(/^A/);
+    expect(report.lending_eligibility).toBe(true);
+    expect(report.max_credit_limit_usd).toBe(50000);
+    expect(report.summary.kyc_status).toBe('verified');
+  });
+
+  it('returns tier D and disables lending for score < 580', async () => {
+    mockReportQueries('verified', 400, 0, 0, 0, 0);
+    const report = await generateCreditReport('user-1');
+    expect(report.risk_tier).toMatch(/^D/);
+    expect(report.lending_eligibility).toBe(false);
+    expect(report.max_credit_limit_usd).toBe(0);
+    expect(report.recommendations.length).toBeGreaterThan(0);
+  });
+
+  it('disables lending and zeroes credit limit when KYC is not verified', async () => {
+    mockReportQueries('pending', 750, 20, 5, 3, 1);
+    const report = await generateCreditReport('user-1');
+    expect(report.lending_eligibility).toBe(false);
+    expect(report.max_credit_limit_usd).toBe(0);
+    expect(report.recommendations[0]).toMatch(/KYC verification/);
+  });
+
+  it('throws 404 when user does not exist', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+    await expect(generateCreditReport('ghost-user')).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('includes summary stats in the report', async () => {
+    mockReportQueries('verified', 670, 15, 3, 2, 2);
+    const report = await generateCreditReport('user-1');
+    expect(report.summary.total_transactions).toBe(15);
+    expect(report.summary.total_settlements).toBe(3);
+    expect(report.summary.total_fx_conversions).toBe(2);
+    expect(report.summary.active_wallets).toBe(2);
+    expect(report.report_generated_at).toBeTruthy();
+  });
+});

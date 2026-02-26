@@ -200,3 +200,78 @@ export async function scanTransactionsForAml(
 
   return { scanned: txRows.length, alerts_created: alertsCreated };
 }
+
+// ─── Regulatory Report Generation (Architecture §3.5) ────────────────────────
+// Generates a compliance summary report for a given time period.
+// Stored in the regulatory_reports table and returned to the caller.
+
+export async function generateRegulatoryReport(
+  period: string,
+  type: 'aml_summary' | 'kyc_status' | 'transaction_volume' | 'full_compliance'
+): Promise<{
+  report_id: string;
+  period: string;
+  type: string;
+  status: string;
+  content: Record<string, unknown>;
+  generated_at: string;
+}> {
+  // Aggregate compliance stats for the report
+  const [totalUsers, verifiedKyc, pendingKyc, rejectedKyc, openAlerts, resolvedAlerts, totalTx, flaggedTx] =
+    await Promise.all([
+      pool.query<{ count: string }>('SELECT COUNT(*) AS count FROM users'),
+      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM users WHERE kyc_status = 'verified'`),
+      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM users WHERE kyc_status = 'pending'`),
+      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM users WHERE kyc_status = 'rejected'`),
+      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM aml_alerts WHERE status = 'pending'`),
+      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM aml_alerts WHERE status = 'resolved'`),
+      pool.query<{ count: string; total: string }>(
+        `SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE status = 'completed'`
+      ),
+      pool.query<{ count: string }>(
+        `SELECT COUNT(DISTINCT t.transaction_id) AS count FROM transactions t
+         JOIN aml_alerts a ON a.transaction_id = t.transaction_id`
+      ),
+    ]);
+
+  const totalUsersCount   = parseInt(totalUsers.rows[0].count, 10);
+  const verifiedKycCount  = parseInt(verifiedKyc.rows[0].count, 10);
+  const totalTxCount      = parseInt(totalTx.rows[0].count, 10);
+  const flaggedTxCount    = parseInt(flaggedTx.rows[0].count, 10);
+
+  const content: Record<string, unknown> = {
+    period,
+    report_type: type,
+    kyc: {
+      total_users:       totalUsersCount,
+      verified:          verifiedKycCount,
+      pending:           parseInt(pendingKyc.rows[0].count, 10),
+      rejected:          parseInt(rejectedKyc.rows[0].count, 10),
+      verification_rate: totalUsersCount === 0 ? 0
+        : parseFloat((verifiedKycCount / totalUsersCount * 100).toFixed(2)),
+    },
+    aml: {
+      open_alerts:          parseInt(openAlerts.rows[0].count, 10),
+      resolved_alerts:      parseInt(resolvedAlerts.rows[0].count, 10),
+      flagged_transactions: flaggedTxCount,
+    },
+    transactions: {
+      total_completed: totalTxCount,
+      total_volume:    parseFloat(totalTx.rows[0].total),
+      flagged_pct:     totalTxCount === 0 ? 0
+        : parseFloat((flaggedTxCount / totalTxCount * 100).toFixed(2)),
+    },
+  };
+
+  const { rows } = await pool.query<{
+    report_id: string; period: string; type: string;
+    status: string; content: Record<string, unknown>; generated_at: string;
+  }>(
+    `INSERT INTO regulatory_reports (period, type, status, content)
+     VALUES ($1, $2, 'submitted', $3)
+     RETURNING *`,
+    [period, type, JSON.stringify(content)]
+  );
+
+  return rows[0];
+}

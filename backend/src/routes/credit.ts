@@ -41,4 +41,15 @@ router.get('/:user_id/activity', async (req: AuthRequest, res: Response, next: N
   }
 });
 
+// ─── GET /v1/credit/:user_id/report (Architecture §3.7 — risk & scoring report) ─
+
+router.get('/:user_id/report', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const report = await creditService.generateCreditReport(req.params.user_id);
+    res.json(report);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

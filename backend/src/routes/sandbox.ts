@@ -119,4 +119,147 @@ router.post('/settlements', (req: Request, res: Response) => {
   });
 });
 
+// ── Integration Adapters — Architecture §3.6 (Integration Layer) ─────────────
+// Mock adapters for third-party payment platforms: PayPal, Stripe, Payoneer
+// and payment rail adapters (SWIFT, SEPA, ACH).
+// All responses include {sandbox: true, adapter: "<platform>"} so partners
+// can test end-to-end flows against realistic response shapes.
+
+// ─── PayPal adapter ──────────────────────────────────────────────────────────
+
+router.post('/integrations/paypal/payout', (req: Request, res: Response) => {
+  const { amount, currency, recipient_email } = req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    adapter: 'paypal',
+    batch_id: `PAYPAL-${uuidv4().split('-')[0].toUpperCase()}`,
+    batch_status: 'PENDING',
+    sender_item_id: uuidv4(),
+    recipient_email: recipient_email ?? 'recipient@example.com',
+    amount: parseFloat(amount) || 100,
+    currency: currency ?? 'USD',
+    estimated_arrival: new Date(Date.now() + 86400000).toISOString(),
+    created_at: new Date().toISOString(),
+  });
+});
+
+router.get('/integrations/paypal/payout/:batch_id', (req: Request, res: Response) => {
+  res.json({
+    sandbox: true,
+    adapter: 'paypal',
+    batch_id: req.params.batch_id,
+    batch_status: 'SUCCESS',
+    items: [{ transaction_status: 'SUCCESS', transaction_id: uuidv4() }],
+  });
+});
+
+// ─── Stripe adapter ──────────────────────────────────────────────────────────
+
+router.post('/integrations/stripe/transfer', (req: Request, res: Response) => {
+  const { amount, currency, destination } = req.body as Record<string, string>;
+  const amtInt = Math.round((parseFloat(amount) || 100) * 100); // Stripe uses cents
+  res.status(201).json({
+    sandbox: true,
+    adapter: 'stripe',
+    id: `tr_${uuidv4().replace(/-/g, '').slice(0, 24)}`,
+    object: 'transfer',
+    amount: amtInt,
+    currency: (currency ?? 'usd').toLowerCase(),
+    destination: destination ?? 'acct_sandbox_example',
+    status: 'paid',
+    created: Math.floor(Date.now() / 1000),
+  });
+});
+
+router.post('/integrations/stripe/payout', (req: Request, res: Response) => {
+  const { amount, currency } = req.body as Record<string, string>;
+  const amtInt = Math.round((parseFloat(amount) || 100) * 100);
+  res.status(201).json({
+    sandbox: true,
+    adapter: 'stripe',
+    id: `po_${uuidv4().replace(/-/g, '').slice(0, 24)}`,
+    object: 'payout',
+    amount: amtInt,
+    currency: (currency ?? 'usd').toLowerCase(),
+    status: 'pending',
+    method: 'standard',
+    arrival_date: Math.floor((Date.now() + 86400000 * 2) / 1000),
+    created: Math.floor(Date.now() / 1000),
+  });
+});
+
+// ─── Payoneer adapter ─────────────────────────────────────────────────────────
+
+router.post('/integrations/payoneer/payment', (req: Request, res: Response) => {
+  const { amount, currency, payee_id } = req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    adapter: 'payoneer',
+    payment_id: `PN-${uuidv4().split('-')[0].toUpperCase()}`,
+    payee_id: payee_id ?? 'sandbox-payee-001',
+    amount: parseFloat(amount) || 100,
+    currency: currency ?? 'USD',
+    status: 'PENDING',
+    estimated_delivery: new Date(Date.now() + 86400000 * 3).toISOString(),
+    created_at: new Date().toISOString(),
+  });
+});
+
+// ─── SWIFT adapter ────────────────────────────────────────────────────────────
+
+router.post('/integrations/swift/transfer', (req: Request, res: Response) => {
+  const { amount, currency, bic, iban } = req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    adapter: 'swift',
+    uetr: uuidv4(),         // Unique End-to-end Transaction Reference
+    bic: bic ?? 'AAAABBCC',
+    iban: iban ?? 'GB29NWBK60161331926819',
+    amount: parseFloat(amount) || 1000,
+    currency: currency ?? 'USD',
+    status: 'ACCEPTED_WITHOUT_POSTING',
+    settlement_date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
+    created_at: new Date().toISOString(),
+  });
+});
+
+// ─── SEPA adapter ─────────────────────────────────────────────────────────────
+
+router.post('/integrations/sepa/credit-transfer', (req: Request, res: Response) => {
+  const { amount, iban, bic } = req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    adapter: 'sepa',
+    message_id: `SEPA-${uuidv4().split('-')[0].toUpperCase()}`,
+    iban: iban ?? 'DE89370400440532013000',
+    bic: bic ?? 'COBADEFFXXX',
+    amount: parseFloat(amount) || 500,
+    currency: 'EUR',
+    status: 'ACCP',   // AcceptedCustomerProfile
+    execution_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    created_at: new Date().toISOString(),
+  });
+});
+
+// ─── ACH adapter ──────────────────────────────────────────────────────────────
+
+router.post('/integrations/ach/transfer', (req: Request, res: Response) => {
+  const { amount, routing_number, account_number } = req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    adapter: 'ach',
+    trace_number: `ACH${Date.now()}`,
+    routing_number: routing_number ?? '021000021',
+    account_number: account_number && account_number.length >= 4
+      ? `****${account_number.slice(-4)}`
+      : '****XXXX',
+    amount: parseFloat(amount) || 500,
+    currency: 'USD',
+    sec_code: 'PPD',
+    status: 'PENDING',
+    effective_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    created_at: new Date().toISOString(),
+  });
+});
+
 export default router;

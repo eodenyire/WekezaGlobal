@@ -1,0 +1,182 @@
+{
+  "id": null,
+  "uid": "wgi-wallet-fx",
+  "title": "WGI Wallet & FX Engine",
+  "description": "Real-time wallet balance metrics and FX engine performance — Architecture §9",
+  "tags": ["wgi", "wallet", "fx"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "FX Conversions (last 5m)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(http_requests_total{route=\"/v1/fx/convert\",status=\"201\"}[5m])",
+          "legendFormat": "FX Converts",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "FX Error Rate (5m)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.05 }, { "color": "red", "value": 0.1 }] },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=\"/v1/fx/convert\",status=~\"4..|5..\"}[5m]) / (rate(http_requests_total{route=\"/v1/fx/convert\"}[5m]) + 0.001)",
+          "legendFormat": "Error Rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Wallet Deposits (last 5m)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(http_requests_total{route=\"/v1/wallets/:uuid/deposit\",status=\"201\"}[5m])",
+          "legendFormat": "Deposits",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Wallet Withdrawals (last 5m)",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(http_requests_total{route=\"/v1/wallets/:uuid/withdraw\",status=\"201\"}[5m])",
+          "legendFormat": "Withdrawals",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "FX Conversion Rate (req/s)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15, "spanNulls": false } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=\"/v1/fx/convert\",status=\"201\"}[2m])",
+          "legendFormat": "Successful Conversions",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=\"/v1/fx/convert\",status=~\"4..|5..\"}[2m])",
+          "legendFormat": "Failed Conversions",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Wallet Transaction Rate (req/s)",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15, "spanNulls": false } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=~\"/v1/wallets.*\",status=\"201\"}[2m])",
+          "legendFormat": "Wallet Ops",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "FX API Latency p95 (seconds)",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "spanNulls": false } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{route=\"/v1/fx/convert\"}[5m]))",
+          "legendFormat": "FX p95 latency",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{route=\"/v1/fx/convert\"}[5m]))",
+          "legendFormat": "FX p50 latency",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "FX Best-Route Requests",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "spanNulls": false } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{route=~\"/v1/fx/best-route.*\"}[2m])",
+          "legendFormat": "Best-Route Queries",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

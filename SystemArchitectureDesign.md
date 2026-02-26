@@ -1,4 +1,4 @@
-# 📄 DOCUMENT 11: SYSTEM ARCHITECTURE DESIGN </br>
+# 📄 SYSTEM ARCHITECTURE DESIGN </br>
  
 **Project:** Wekeza Global Infrastructure (WGI) </br>
 **Founding Liquidity Partner:** Wekeza Bank </br>

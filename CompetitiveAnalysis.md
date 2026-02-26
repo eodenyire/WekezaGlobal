@@ -18,10 +18,10 @@
 
 We’ll evaluate across 4 categories:
 
-A. Global cross‑border payment platforms
-B. Global wallet & collection providers
-C. African fintechs & payment networks
-D. Traditional banks
+A. Global cross‑border payment platforms </br>
+B. Global wallet & collection providers </br>
+C. African fintechs & payment networks </br>
+D. Traditional banks </br>
 
 ---
 
@@ -241,31 +241,31 @@ Banks like **KCB, NCBA, Equity, Standard Chartered, Citi, Barclays**
 
 # 🔎 3️⃣ Competitive Gaps & WGI Advantages
 
-## 🟢 Gap: Bank Fragmentation
+## 🟢 Gap: Bank Fragmentation </br>
 
-**Problem:** No current global SSP connects all African banks under a unified API and settlement layer.
-**WGI Advantage:** Built from Day 1 to integrate deeply with bank partners across Africa.
-
----
-
-## 🟢 Gap: FX Inefficiency
-
-**Problem:** Freelancers and SMEs lose value due to opaque FX spreads.
-**WGI Advantage:** Smart FX engine aggregates bank and liquidity provider rates — optimizing conversion costs in real time.
+**Problem:** No current global SSP connects all African banks under a unified API and settlement layer.</br>
+**WGI Advantage:** Built from Day 1 to integrate deeply with bank partners across Africa. </br>
 
 ---
 
-## 🟢 Gap: Global Earnings Settlement
+## 🟢 Gap: FX Inefficiency </br>
 
-**Problem:** Global platforms do not guarantee fast local settlement in African currencies.
-**WGI Advantage:** Local settlement route options across partner banks — faster and cheaper.
+**Problem:** Freelancers and SMEs lose value due to opaque FX spreads. </br>
+**WGI Advantage:** Smart FX engine aggregates bank and liquidity provider rates — optimizing conversion costs in real time. </br>
+
+---
+
+## 🟢 Gap: Global Earnings  </br>
+
+**Problem:** Global platforms do not guarantee fast local settlement in African currencies. </br>
+**WGI Advantage:** Local settlement route options across partner banks — faster and cheaper. </br>
 
 ---
 
 ## 🟢 Gap: Programmable Infrastructure
 
-**Problem:** African fintechs must cobble together multiple providers to build products (cards, wallets, bank integrations).
-**WGI Advantage:** One unified infrastructure layer for payments, wallets, FX, and settlement.
+**Problem:** African fintechs must cobble together multiple providers to build products (cards, wallets, bank integrations). </br>
+**WGI Advantage:** One unified infrastructure layer for payments, wallets, FX, and settlement. </br>
 
 ---
 

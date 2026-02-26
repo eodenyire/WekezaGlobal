@@ -1,0 +1,17 @@
+apiVersion: v2
+name: wgi
+description: WekezaGlobal Infrastructure — Pan-African multi-currency financial rail
+type: application
+version: 1.0.0
+appVersion: 1.0.0
+keywords:
+  - fintech
+  - payments
+  - africa
+  - wgi
+home: https://wekeza.global
+sources:
+  - https://github.com/eodenyire/WekezaGlobal
+maintainers:
+  - name: WekezaGlobal Platform Team
+    email: platform@wekeza.global

@@ -1,0 +1,44 @@
+groups:
+  - name: wgi_backend_alerts
+    interval: 30s
+    rules:
+      - alert: BackendDown
+        expr: up{job="wgi-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WGI Backend is down"
+          description: "The WGI backend API has been unreachable for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: >
+          rate(http_requests_total{job="wgi-backend",status=~"5.."}[5m])
+          / rate(http_requests_total{job="wgi-backend"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP 5xx error rate"
+          description: "More than 5% of requests are returning 5xx errors."
+
+      - alert: SlowResponseTime
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="wgi-backend"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API response latency (p95 > 2s)"
+          description: "The 95th percentile API response time exceeds 2 seconds."
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job="wgi-backend"} > 500 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend memory usage > 500 MB"
+          description: "The WGI backend process is consuming more than 500 MB of memory."

@@ -5,6 +5,7 @@ import { config } from './config';
 import { connectDB, connectRedis } from './database';
 import { rateLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
+import { metricsMiddleware, metricsHandler } from './metrics';
 
 // ─── Route imports ───────────────────────────────────────────────────────────
 import authRoutes       from './routes/auth';
@@ -27,6 +28,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ─── Prometheus metrics middleware ───────────────────────────────────────────
+app.use(metricsMiddleware);
+
 // ─── Rate limiting (Redis-backed, fails open) ────────────────────────────────
 app.use(rateLimiter);
 
@@ -34,6 +38,9 @@ app.use(rateLimiter);
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'wgi-backend', timestamp: new Date().toISOString() });
 });
+
+// ─── Prometheus metrics ───────────────────────────────────────────────────────
+app.get('/metrics', metricsHandler);
 
 // ─── API routes ──────────────────────────────────────────────────────────────
 app.use('/auth',           authRoutes);

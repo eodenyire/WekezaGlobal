@@ -51,13 +51,13 @@ const WalletDetail: React.FC = () => {
   const fetchData = async () => {
     try {
       const [walletRes, txRes, banksRes] = await Promise.all([
-        apiClient.get<Wallet>(`/wallets/${id}`),
-        apiClient.get<Transaction[]>(`/wallets/${id}/transactions`),
-        apiClient.get<Bank[]>('/banks').catch(() => ({ data: [] as Bank[] })),
+        apiClient.get<Wallet>(`/v1/wallets/${id}`),
+        apiClient.get<{ transactions: Transaction[] }>(`/v1/wallets/${id}/transactions`),
+        apiClient.get<{ banks: Bank[] }>('/v1/banks').catch(() => ({ data: { banks: [] as Bank[] } })),
       ]);
       setWallet(walletRes.data);
-      setTransactions(txRes.data);
-      setBanks(banksRes.data);
+      setTransactions(txRes.data.transactions ?? []);
+      setBanks(banksRes.data.banks ?? []);
     } catch {
       setError('Failed to load wallet details.');
     } finally {
@@ -75,7 +75,7 @@ const WalletDetail: React.FC = () => {
     if (!amount || amount <= 0) { setDepMsg({ type: 'error', text: 'Enter a valid amount.' }); return; }
     setDepLoading(true);
     try {
-      await apiClient.post(`/wallets/${id}/deposit`, {
+      await apiClient.post(`/v1/wallets/${id}/deposit`, {
         amount,
         currency: wallet?.currency,
         reference: depRef || undefined,
@@ -99,7 +99,7 @@ const WalletDetail: React.FC = () => {
     if (!wdBank) { setWdMsg({ type: 'error', text: 'Select a bank.' }); return; }
     setWdLoading(true);
     try {
-      await apiClient.post(`/wallets/${id}/withdraw`, {
+      await apiClient.post(`/v1/wallets/${id}/withdraw`, {
         amount,
         currency: wallet?.currency,
         bank_id: wdBank,

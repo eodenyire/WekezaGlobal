@@ -228,6 +228,22 @@ export async function getTransactions(
   return findTransactionsByWalletId(walletId, limit, offset);
 }
 
+export async function getRecentTransactions(
+  userId: string,
+  limit = 10
+): Promise<Transaction[]> {
+  const { rows } = await pool.query<Transaction>(
+    `SELECT t.*
+     FROM transactions t
+     JOIN wallets w ON t.wallet_id = w.wallet_id
+     WHERE w.user_id = $1
+     ORDER BY t.created_at DESC
+     LIMIT $2`,
+    [userId, limit]
+  );
+  return rows;
+}
+
 /**
  * Internal helper used by the FX service to move funds between wallets
  * within a supplied DB transaction (client).

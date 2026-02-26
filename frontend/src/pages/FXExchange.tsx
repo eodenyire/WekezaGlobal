@@ -32,12 +32,12 @@ const FXExchange: React.FC = () => {
     const fetchData = async () => {
       try {
         const [ratesRes, walletsRes] = await Promise.all([
-          apiClient.get<FXRate[]>('/fx/rates'),
-          apiClient.get<Wallet[]>('/wallets'),
+          apiClient.get<{ rates: FXRate[] }>('/v1/fx/rates'),
+          apiClient.get<{ wallets: Wallet[] }>('/v1/wallets'),
         ]);
-        setRates(ratesRes.data);
-        setWallets(walletsRes.data);
-        if (walletsRes.data.length > 0) setWalletId(walletsRes.data[0].wallet_id);
+        setRates(ratesRes.data.rates ?? []);
+        setWallets(walletsRes.data.wallets ?? []);
+        if (walletsRes.data.wallets && walletsRes.data.wallets.length > 0) setWalletId(walletsRes.data.wallets[0].wallet_id);
       } catch {
         setError('Failed to load FX data.');
       } finally {
@@ -77,8 +77,8 @@ const FXExchange: React.FC = () => {
     if (!walletId) { setConvertMsg({ type: 'error', text: 'Select a wallet.' }); return; }
     setConverting(true);
     try {
-      await apiClient.post('/fx/convert', {
-        wallet_id: walletId,
+      await apiClient.post('/v1/fx/convert', {
+        source_wallet_id: walletId,
         from_currency: fromCurrency,
         to_currency: toCurrency,
         amount: amt,

@@ -38,12 +38,12 @@ const Dashboard: React.FC = () => {
     const fetchData = async () => {
       try {
         const [walletsRes, txRes, ratesRes] = await Promise.all([
-          apiClient.get<Wallet[]>('/wallets'),
-          apiClient.get<Transaction[]>('/transactions?limit=5'),
+          apiClient.get<{ wallets: Wallet[] }>('/v1/wallets'),
+          apiClient.get<{ transactions: Transaction[] }>('/v1/transactions?limit=5'),
           apiClient.get<{ rates: Array<{ currency_from: string; currency_to: string; rate: number }> }>('/v1/fx/rates'),
         ]);
-        setWallets(walletsRes.data);
-        setTransactions(txRes.data);
+        setWallets(walletsRes.data.wallets ?? []);
+        setTransactions(txRes.data.transactions ?? []);
         // Build a USD-equivalent rate map from API data
         const rateMap: Record<string, number> = { USD: 1 };
         ratesRes.data.rates?.forEach((r) => {

@@ -6,6 +6,18 @@ import { config } from '../config';
 
 const DEFAULT_SPENDING_LIMIT = config.defaultCardSpendingLimit;
 
+export async function getUserCards(userId: string): Promise<Card[]> {
+  const { rows } = await pool.query<Card>(
+    `SELECT c.*
+     FROM cards c
+     JOIN wallets w ON c.wallet_id = w.wallet_id
+     WHERE w.user_id = $1
+     ORDER BY c.created_at DESC`,
+    [userId]
+  );
+  return rows;
+}
+
 export async function createCard(
   walletId: string,
   cardType: 'virtual' | 'physical',

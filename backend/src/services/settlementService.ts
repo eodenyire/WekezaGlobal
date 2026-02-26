@@ -78,6 +78,18 @@ export async function getWalletSettlements(walletId: string): Promise<Settlement
   return rows.map(resolveStatus);
 }
 
+export async function getUserSettlements(userId: string): Promise<Settlement[]> {
+  const { rows } = await pool.query<Settlement>(
+    `SELECT s.*
+     FROM settlements s
+     JOIN wallets w ON s.wallet_id = w.wallet_id
+     WHERE w.user_id = $1
+     ORDER BY s.created_at DESC`,
+    [userId]
+  );
+  return rows.map(resolveStatus);
+}
+
 export async function getAllBanks(): Promise<Bank[]> {
   const { rows } = await pool.query<Bank>(
     "SELECT * FROM banks ORDER BY name ASC"

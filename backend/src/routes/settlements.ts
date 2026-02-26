@@ -15,6 +15,17 @@ const InitiateSchema = z.object({
   amount:    z.number().positive(),
 });
 
+// ─── GET /v1/settlements  (current user's settlements) ───────────────────────
+
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const settlements = await settlementService.getUserSettlements(req.user!.userId);
+    res.json({ settlements });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /v1/settlements/wallet/:wallet_id  (before /:settlement_id) ─────────
 
 router.get('/wallet/:wallet_id', async (req: AuthRequest, res: Response, next: NextFunction) => {

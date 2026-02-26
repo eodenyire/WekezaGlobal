@@ -11,7 +11,7 @@ router.use(authenticate);
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
 const CreateWalletSchema = z.object({
-  user_id:  z.string().uuid(),
+  user_id:  z.string().uuid().optional(),
   currency: z.enum(['USD','EUR','GBP','KES']),
 });
 
@@ -23,6 +23,17 @@ const DepositSchema = z.object({
 const WithdrawSchema = z.object({
   amount:   z.number().positive(),
   metadata: z.record(z.unknown()).optional(),
+});
+
+// ─── GET /v1/wallets  (current user's wallets) ───────────────────────────────
+
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const wallets = await walletService.getUserWallets(req.user!.userId);
+    res.json({ wallets });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── GET /v1/wallets/user/:user_id  (must come before /:wallet_id) ───────────
@@ -37,16 +48,19 @@ router.get('/user/:user_id', async (req: AuthRequest, res: Response, next: NextF
 });
 
 // ─── POST /v1/wallets ────────────────────────────────────────────────────────
+// user_id is optional: omit it to create a wallet for the authenticated user.
+// Admins may supply a different user_id to create wallets on behalf of others.
 
 router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const body = CreateWalletSchema.parse(req.body);
+    const userId = body.user_id ?? req.user!.userId;
     // Only allow users to create wallets for themselves (unless admin)
-    if (req.user?.role !== 'admin' && body.user_id !== req.user?.userId) {
+    if (req.user?.role !== 'admin' && userId !== req.user?.userId) {
       res.status(403).json({ error: 'Forbidden', message: 'Cannot create wallet for another user' });
       return;
     }
-    const wallet = await walletService.createWallet(body.user_id, body.currency);
+    const wallet = await walletService.createWallet(userId, body.currency);
     res.status(201).json(wallet);
   } catch (err) {
     next(err);
@@ -119,6 +133,22 @@ router.get('/:wallet_id/transactions', async (req: AuthRequest, res: Response, n
       offset
     );
     res.json({ transactions, limit, offset });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /v1/wallets/transactions  (recent transactions for current user) ─────
+// NOTE: This is exported separately and mounted at /v1/transactions in server.ts
+
+export const transactionsRouter = Router();
+transactionsRouter.use(authenticate);
+
+transactionsRouter.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const transactions = await walletService.getRecentTransactions(req.user!.userId, limit);
+    res.json({ transactions });
   } catch (err) {
     next(err);
   }

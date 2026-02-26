@@ -1,4 +1,4 @@
-# 📄 DOCUMENT 10: PRODUCT REQUIREMENTS DOCUMENT (PRD)
+# 📄 PRODUCT REQUIREMENTS DOCUMENT (PRD)
 
 **Project:** Wekeza Global Infrastructure (WGI)
 **Founding Liquidity Partner:** Wekeza Bank

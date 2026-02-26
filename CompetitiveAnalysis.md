@@ -1,7 +1,7 @@
-# 📄 DOCUMENT 4: COMPETITIVE LANDSCAPE ANALYSIS
+# 📄 COMPETITIVE LANDSCAPE ANALYSIS
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Scope:** Pan‑African
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Scope:** Pan‑African </br>
 
 ---
 

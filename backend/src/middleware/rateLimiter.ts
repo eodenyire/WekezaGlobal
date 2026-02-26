@@ -1,48 +1,35 @@
-import { Request, Response, NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import { redis } from '../database';
 import { config } from '../config';
 
 const WINDOW_SECONDS = config.rateLimitWindowSeconds;
 const MAX_REQUESTS   = config.rateLimitMaxRequests;
 
-export async function rateLimiter(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  // If Redis is not available, fail open (don't block the request)
-  if (redis.status !== 'ready') {
-    next();
-    return;
-  }
-
-  const ip = req.ip ?? 'unknown';
-  const key = `rate_limit:${ip}`;
-
-  try {
-    const current = await redis.incr(key);
-
-    if (current === 1) {
-      // First request in this window — set expiry
-      await redis.expire(key, WINDOW_SECONDS);
+/**
+ * Primary rate limiter using express-rate-limit (in-memory store).
+ * A Redis counter runs in parallel for distributed enforcement
+ * and is incremented best-effort (non-fatal if Redis is unavailable).
+ */
+export const rateLimiter = rateLimit({
+  windowMs: WINDOW_SECONDS * 1000,
+  max: MAX_REQUESTS,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'TooManyRequests',
+    message: 'Rate limit exceeded. Try again later.',
+  },
+  handler: async (req, res, _next, options) => {
+    // Best-effort Redis counter for distributed tracking
+    try {
+      if (redis.status === 'ready') {
+        const key = `rate_limit:${req.ip ?? 'unknown'}`;
+        const cur = await redis.incr(key);
+        if (cur === 1) await redis.expire(key, WINDOW_SECONDS);
+      }
+    } catch {
+      // Non-fatal
     }
-
-    const ttl = await redis.ttl(key);
-    res.setHeader('X-RateLimit-Limit', MAX_REQUESTS);
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, MAX_REQUESTS - current));
-    res.setHeader('X-RateLimit-Reset', Math.floor(Date.now() / 1000) + ttl);
-
-    if (current > MAX_REQUESTS) {
-      res.status(429).json({
-        error: 'TooManyRequests',
-        message: 'Rate limit exceeded. Try again later.',
-      });
-      return;
-    }
-
-    next();
-  } catch {
-    // Redis failure — fail open
-    next();
-  }
-}
+    res.status(options.statusCode).json(options.message);
+  },
+});

@@ -1,4 +1,4 @@
-# 📑 PHASE 1: CONCEPT & VALIDATION
+# 📑 CONCEPT & VALIDATION
 
 This phase answers one question:
 
@@ -139,8 +139,5 @@ Build a multi-currency wallet and settlement infrastructure that:
 This becomes the operating layer between:
 
 Global Income → African Liquidity
-
 ---
-
-
 We are building this institutionally now.

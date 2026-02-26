@@ -129,9 +129,10 @@ export async function convert(input: ConvertInput): Promise<ConvertResult> {
 
   const fxRate = await getRate(from_currency, to_currency);
   const rate = parseFloat(fxRate.rate);
-  const fee = parseFloat((amount * FX_FEE_RATE).toFixed(4));
-  const amountAfterFee = amount - fee;
-  const amountTo = parseFloat((amountAfterFee * rate).toFixed(4));
+  // Use Math.round to 4 decimal places to avoid floating-point drift
+  const fee = Math.round(amount * FX_FEE_RATE * 10000) / 10000;
+  const amountAfterFee = Math.round((amount - fee) * 10000) / 10000;
+  const amountTo = Math.round(amountAfterFee * rate * 10000) / 10000;
 
   const client: PoolClient = await pool.connect();
   try {

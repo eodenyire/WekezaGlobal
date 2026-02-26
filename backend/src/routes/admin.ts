@@ -32,7 +32,7 @@ router.get('/stats', async (_req: AuthRequest, res: Response, next: NextFunction
     res.json({
       total_users:          parseInt(usersRes.rows[0].count, 10),
       total_transactions:   parseInt(txRes.rows[0].count, 10),
-      total_volume_usd:     parseFloat(txRes.rows[0].total_volume),
+      total_volume_all_currencies: parseFloat(txRes.rows[0].total_volume),
       total_wallets:        parseInt(walletRes.rows[0].count, 10),
       pending_aml_alerts:   parseInt(alertRes.rows[0].count, 10),
       pending_settlements:  parseInt(settlementRes.rows[0].count, 10),

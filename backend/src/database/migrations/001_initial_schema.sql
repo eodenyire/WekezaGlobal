@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS wallets (
   wallet_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID REFERENCES users(user_id),
   currency   VARCHAR(5) NOT NULL CHECK (currency IN ('USD','EUR','GBP','KES')),
-  balance    DECIMAL(20,4) DEFAULT 0,
+  balance    DECIMAL(20,4) DEFAULT 0 CHECK (balance >= 0),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

@@ -41,6 +41,11 @@ router.get('/user/:user_id', async (req: AuthRequest, res: Response, next: NextF
 router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const body = CreateWalletSchema.parse(req.body);
+    // Only allow users to create wallets for themselves (unless admin)
+    if (req.user?.role !== 'admin' && body.user_id !== req.user?.userId) {
+      res.status(403).json({ error: 'Forbidden', message: 'Cannot create wallet for another user' });
+      return;
+    }
     const wallet = await walletService.createWallet(body.user_id, body.currency);
     res.status(201).json(wallet);
   } catch (err) {

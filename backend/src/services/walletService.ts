@@ -275,6 +275,9 @@ export async function creditWalletInternal(
      WHERE wallet_id = $2 RETURNING balance`,
     [amount, walletId]
   );
+  if (updated.length === 0) {
+    throw createError('Wallet not found for credit operation', 404);
+  }
   const balanceAfter = parseFloat(updated[0].balance);
 
   await client.query(

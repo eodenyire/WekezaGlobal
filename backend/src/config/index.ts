@@ -9,9 +9,13 @@ export const config = {
     process.env.DATABASE_URL ||
     'postgresql://wgi_user:wgi_pass@localhost:5432/wgi_db',
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
-  jwtSecret:
-    process.env.JWT_SECRET ||
-    'your-super-secret-jwt-key-change-in-production',
+  jwtSecret: (() => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET environment variable must be set in production');
+    }
+    return secret || 'dev-only-jwt-secret-do-not-use-in-production';
+  })(),
   jwtExpiry: parseInt(process.env.JWT_EXPIRY || '3600', 10),
   oauthClientId: process.env.OAUTH_CLIENT_ID || 'wgi-client',
   oauthClientSecret: process.env.OAUTH_CLIENT_SECRET || 'wgi-client-secret',

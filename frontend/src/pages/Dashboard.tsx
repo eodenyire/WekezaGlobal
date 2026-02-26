@@ -30,18 +30,26 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [fxRates, setFxRates] = useState<Record<string, number>>({ USD: 1, EUR: 1.09, GBP: 1.27, KES: 0.0077 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [walletsRes, txRes] = await Promise.all([
+        const [walletsRes, txRes, ratesRes] = await Promise.all([
           apiClient.get<Wallet[]>('/wallets'),
           apiClient.get<Transaction[]>('/transactions?limit=5'),
+          apiClient.get<{ rates: Array<{ currency_from: string; currency_to: string; rate: number }> }>('/v1/fx/rates'),
         ]);
         setWallets(walletsRes.data);
         setTransactions(txRes.data);
+        // Build a USD-equivalent rate map from API data
+        const rateMap: Record<string, number> = { USD: 1 };
+        ratesRes.data.rates?.forEach((r) => {
+          if (r.currency_to === 'USD') rateMap[r.currency_from] = r.rate;
+        });
+        setFxRates(rateMap);
       } catch {
         setError('Failed to load dashboard data.');
       } finally {
@@ -52,8 +60,7 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const totalUsd = wallets.reduce((sum, w) => {
-    const rates: Record<string, number> = { USD: 1, EUR: 1.09, GBP: 1.27, KES: 0.0077 };
-    return sum + w.balance * (rates[w.currency] ?? 1);
+    return sum + w.balance * (fxRates[w.currency] ?? 1);
   }, 0);
 
   if (loading) return <LoadingSpinner />;

@@ -1,7 +1,7 @@
-# 📄 SECURITY MODEL
+# 📄 SECURITY MODEL </br>
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Founding Liquidity Partner:** Wekeza Bank
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Founding Liquidity Partner:** Wekeza Bank </br>
 
 ---
 

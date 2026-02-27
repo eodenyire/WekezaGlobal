@@ -12,24 +12,39 @@ function formatDate(iso: string) {
   });
 }
 
+interface PendingKycDoc {
+  kyc_document_id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  doc_type: string;
+  file_url: string | null;
+  status: string;
+  verified_at: string | null;
+}
+
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [alerts, setAlerts] = useState<AMLAlert[]>([]);
+  const [pendingDocs, setPendingDocs] = useState<PendingKycDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [resolving, setResolving] = useState<string | null>(null);
+  const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      const [statsRes, usersRes, alertsRes] = await Promise.all([
-        apiClient.get<AdminStats>('/admin/stats'),
-        apiClient.get<User[]>('/admin/users?limit=10'),
-        apiClient.get<AMLAlert[]>('/admin/aml-alerts?status=pending'),
+      const [statsRes, usersRes, alertsRes, complianceRes] = await Promise.all([
+        apiClient.get<AdminStats>('/v1/admin/stats'),
+        apiClient.get<{ users: User[]; total: number }>('/v1/admin/users?limit=10'),
+        apiClient.get<{ alerts: AMLAlert[]; limit: number; offset: number }>('/v1/aml/alerts?status=pending'),
+        apiClient.get<{ kyc: { pending_documents: PendingKycDoc[] } }>('/v1/admin/compliance'),
       ]);
       setStats(statsRes.data);
-      setUsers(usersRes.data);
-      setAlerts(alertsRes.data);
+      setUsers(usersRes.data.users ?? []);
+      setAlerts(alertsRes.data.alerts ?? []);
+      setPendingDocs(complianceRes.data.kyc?.pending_documents ?? []);
     } catch {
       setError('Failed to load admin data. Ensure you have admin privileges.');
     } finally {
@@ -42,12 +57,24 @@ const AdminDashboard: React.FC = () => {
   const handleResolveAlert = async (alertId: string) => {
     setResolving(alertId);
     try {
-      await apiClient.patch(`/admin/aml-alerts/${alertId}`, { status: 'resolved' });
+      await apiClient.put(`/v1/aml/alerts/${alertId}`, { status: 'resolved' });
       await fetchData();
     } catch {
       alert('Failed to resolve alert.');
     } finally {
       setResolving(null);
+    }
+  };
+
+  const handleKycReview = async (docId: string, status: 'verified' | 'rejected') => {
+    setReviewingDoc(docId);
+    try {
+      await apiClient.put(`/v1/kyc/${docId}`, { status });
+      await fetchData();
+    } catch {
+      alert(`Failed to ${status === 'verified' ? 'approve' : 'reject'} document.`);
+    } finally {
+      setReviewingDoc(null);
     }
   };
 
@@ -117,6 +144,56 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Vision Phase 1 KPIs: User Segment Breakdown */}
+      {stats && stats.users_by_segment && Object.keys(stats.users_by_segment).length > 0 && (
+        <div className="card" style={{ marginBottom: '24px' }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">👥 User Segments — Phase 1 KPIs</div>
+              <div className="card-subtitle">Target: 2,000 freelancers · 500 SMEs (Executive Vision §5)</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', padding: '0 0 4px' }}>
+            {[
+              { key: 'freelancer', icon: '👨‍💻', label: 'Freelancers',    target: 2000 },
+              { key: 'sme',        icon: '🏢', label: 'SMEs',            target: 500  },
+              { key: 'exporter',   icon: '📦', label: 'Exporters',       target: null },
+              { key: 'ecommerce',  icon: '🛒', label: 'E-Commerce',      target: null },
+              { key: 'ngo',        icon: '🌍', label: 'NGOs',            target: null },
+              { key: 'startup',    icon: '🚀', label: 'Startups',        target: null },
+              { key: 'individual', icon: '👤', label: 'Individuals',     target: null },
+            ].map(({ key, icon, label, target }) => {
+              const count = stats.users_by_segment[key] ?? 0;
+              const pct = target ? Math.min(100, Math.round((count / target) * 100)) : null;
+              return (
+                <div key={key} style={{
+                  flex: '1', minWidth: '130px',
+                  background: 'var(--color-bg)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '14px 16px',
+                  border: '1px solid var(--color-border)',
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '22px', marginBottom: '4px' }}>{icon}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '2px' }}>{label}</div>
+                  <div style={{ fontSize: '22px', fontWeight: 700 }}>{count.toLocaleString()}</div>
+                  {target !== null && (
+                    <div style={{ marginTop: '6px' }}>
+                      <div style={{ background: '#E5E7EB', borderRadius: '4px', height: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, background: '#4F46E5', height: '100%', borderRadius: '4px' }} />
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                        {pct}% of {target.toLocaleString()} target
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Volume by currency */}
       {stats && Object.keys(stats.total_volume_by_currency).length > 0 && (
         <div className="card" style={{ marginBottom: '24px' }}>
@@ -140,6 +217,59 @@ const AdminDashboard: React.FC = () => {
                 <div style={{ fontSize: '18px', fontWeight: 700 }}>
                   {CURRENCY_SYMBOLS[currency] ?? currency}{volume.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Proposal §10 Key Metrics for Success */}
+      {stats?.key_metrics && (
+        <div className="card" style={{ marginBottom: '24px' }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">📊 Key Metrics for Success — Proposal §10</div>
+              <div className="card-subtitle">Settlement speed · Multi-bank reliability · Partner integrations · Credit intelligence</div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            {[
+              {
+                icon: '⚡', label: 'Avg Settlement Speed',
+                value: `${stats.key_metrics.avg_settlement_minutes} min`,
+                sub: 'Target: real-time (<2h)',
+                color: '#0891B2',
+              },
+              {
+                icon: '🏦', label: 'Active Banks',
+                value: `${stats.key_metrics.active_banks} / ${stats.key_metrics.total_banks}`,
+                sub: 'Multi-bank redundancy',
+                color: '#4F46E5',
+              },
+              {
+                icon: '🔑', label: 'API Partners',
+                value: (stats.key_metrics.active_api_keys + stats.key_metrics.active_webhooks).toString(),
+                sub: `${stats.key_metrics.active_api_keys} keys · ${stats.key_metrics.active_webhooks} webhooks`,
+                color: '#7C3AED',
+              },
+              {
+                icon: '🤖', label: 'Credit Intelligence',
+                value: stats.key_metrics.credit_intelligence_users.toString(),
+                sub: 'Users with credit data',
+                color: '#059669',
+              },
+            ].map(({ icon, label, value, sub, color }) => (
+              <div key={label} style={{
+                background: 'var(--color-bg)',
+                borderRadius: 'var(--radius-md)',
+                padding: '16px',
+                border: `1px solid var(--color-border)`,
+                borderTop: `3px solid ${color}`,
+              }}>
+                <div style={{ fontSize: '22px', marginBottom: '6px' }}>{icon}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>{label}</div>
+                <div style={{ fontSize: '22px', fontWeight: 700, color }}>{value}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{sub}</div>
               </div>
             ))}
           </div>
@@ -298,6 +428,84 @@ const AdminDashboard: React.FC = () => {
                       {alert.status === 'resolved' && (
                         <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Resolved</span>
                       )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* KYC Document Review */}
+      <div className="card" style={{ marginTop: '24px' }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">📋 KYC Document Review</div>
+            <div className="card-subtitle">{pendingDocs.length} document(s) pending review</div>
+          </div>
+        </div>
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Document Type</th>
+                <th>File</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingDocs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="table-empty">
+                    ✅ No KYC documents pending review
+                  </td>
+                </tr>
+              ) : (
+                pendingDocs.map((doc) => (
+                  <tr key={doc.kyc_document_id}>
+                    <td style={{ fontWeight: 600 }}>{doc.full_name}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{doc.email}</td>
+                    <td style={{ textTransform: 'capitalize' }}>
+                      {doc.doc_type.replace(/_/g, ' ')}
+                    </td>
+                    <td>
+                      {doc.file_url ? (
+                        <a
+                          href={doc.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: '12px', color: 'var(--color-primary)' }}
+                        >
+                          View Doc 🔗
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-muted)' }}>No file</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="badge badge-warning">{doc.status}</span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => handleKycReview(doc.kyc_document_id, 'verified')}
+                          disabled={reviewingDoc === doc.kyc_document_id}
+                        >
+                          {reviewingDoc === doc.kyc_document_id ? <LoadingSpinner size="sm" /> : '✓ Approve'}
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleKycReview(doc.kyc_document_id, 'rejected')}
+                          disabled={reviewingDoc === doc.kyc_document_id}
+                        >
+                          ✕ Reject
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

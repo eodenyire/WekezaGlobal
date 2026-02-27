@@ -1,3 +1,5 @@
+export type AccountType = 'freelancer' | 'sme' | 'exporter' | 'ecommerce' | 'ngo' | 'startup' | 'individual';
+
 export interface User {
   user_id: string;
   full_name: string;
@@ -5,6 +7,7 @@ export interface User {
   phone_number?: string;
   kyc_status: 'pending' | 'verified' | 'rejected';
   role: 'user' | 'admin' | 'compliance' | 'operations' | 'partner';
+  account_type: AccountType;
   created_at: string;
 }
 
@@ -44,6 +47,7 @@ export interface Settlement {
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed';
+  settled_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,8 +56,10 @@ export interface Card {
   card_id: string;
   wallet_id: string;
   card_type: 'virtual' | 'physical';
+  type: 'virtual' | 'physical';   // spec alias for card_type
   status: 'active' | 'blocked' | 'expired';
   spending_limit: number;
+  limit: number;                  // spec alias for spending_limit
   created_at: string;
 }
 
@@ -97,4 +103,103 @@ export interface AdminStats {
   total_volume_by_currency: Record<string, number>;
   pending_kyc: number;
   pending_aml_alerts: number;
+  /** Vision Phase 1 KPIs — user segment counts */
+  users_by_segment: Record<string, number>;
+  /** Proposal §10 Key Metrics */
+  key_metrics?: {
+    avg_settlement_minutes:    number;
+    total_banks:               number;
+    active_banks:              number;
+    active_api_keys:           number;
+    active_webhooks:           number;
+    credit_intelligence_users: number;
+  };
+}
+
+export interface Notification {
+  notification_id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ApiKey {
+  api_key_id: string;
+  user_id: string;
+  name: string | null;
+  /** The API key value (prefixed token) returned by the server */
+  api_key: string;
+  status: string;
+  created_at: string;
+}
+
+export interface Webhook {
+  webhook_id: string;
+  user_id: string;
+  url: string;
+  events: string[];
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+/** Response from POST /v1/webhooks — includes a one-time signing secret */
+export interface WebhookCreationResponse extends Webhook {
+  /** HMAC-SHA256 signing secret. Shown only once at creation time. */
+  secret: string;
+}
+
+// ─── Collection Accounts (BRD BR-010 / BR-011 / BR-012) ──────────────────────
+
+export type PaymentRail = 'ACH' | 'SWIFT' | 'SEPA';
+
+export interface CollectionAccount {
+  collection_account_id: string;
+  user_id: string;
+  wallet_id: string;
+  rail: PaymentRail;
+  currency: string;
+  label: string | null;
+  routing_number: string | null;
+  account_number: string | null;
+  iban: string | null;
+  bic: string | null;
+  reference_code: string;
+  status: 'active' | 'closed';
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Subscriptions (Proposal §7 Revenue Stream 3) ────────────────────────────
+
+export interface SubscriptionPlan {
+  plan_id:       string;
+  name:          string;
+  display_name:  string;
+  price_usd:     string;
+  billing_cycle: string;
+  features:      string[];
+  is_active:     boolean;
+  created_at:    string;
+  updated_at:    string;
+}
+
+export interface UserSubscription {
+  subscription_id: string;
+  user_id:         string;
+  plan_id:         string;
+  status:          'active' | 'cancelled' | 'expired' | 'past_due';
+  plan_name?:      string;
+  display_name?:   string;
+  price_usd?:      string;
+  features?:       string[];
+  started_at:      string;
+  expires_at:      string | null;
+  cancelled_at:    string | null;
+  created_at:      string;
+  updated_at:      string;
 }

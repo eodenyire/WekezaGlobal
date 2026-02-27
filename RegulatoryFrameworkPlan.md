@@ -1,8 +1,8 @@
-# 📄 DOCUMENT 9: REGULATORY FRAMEWORK PLAN
+# 📄 REGULATORY FRAMEWORK PLAN
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Founding Liquidity Partner:** Wekeza Bank
-**Scope:** Pan-African
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Founding Liquidity Partner:** Wekeza Bank </br>
+**Scope:** Pan-African </br>
 
 ---
 
@@ -127,4 +127,4 @@ Initial focus:
 * Cross-border operations adhering to local FX laws
 * Regular reporting to CBK & other regulators automated
 
----
+------

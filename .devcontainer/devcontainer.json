@@ -1,0 +1,59 @@
+{
+  // GitHub Codespaces configuration for Wekeza Global Infrastructure (WGI).
+  // Click "Code → Codespaces → Create codespace on main" on GitHub to launch
+  // the full application stack online — no local installation required.
+  "name": "WGI — Wekeza Global Infrastructure",
+
+  // Ubuntu 22.04 base image; Docker-in-Docker lets us run docker compose
+  // inside the Codespace, and Node 20 is available for local dev work.
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+
+  "features": {
+    // Provides the Docker daemon so `docker compose up` works inside the Codespace.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    // Node.js 20 LTS — for running `npm install / npm run dev` without Docker.
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
+  },
+
+  // Ports forwarded to the Codespace browser tabs automatically.
+  "forwardPorts": [3000, 3001, 3003, 9090],
+  "portsAttributes": {
+    "3000": {
+      "label": "🌍 WGI Frontend",
+      "onAutoForward": "openBrowser"
+    },
+    "3001": {
+      "label": "⚙️  Backend API",
+      "onAutoForward": "notify"
+    },
+    "3003": {
+      "label": "📊 Grafana (admin / admin)",
+      "onAutoForward": "notify"
+    },
+    "9090": {
+      "label": "📈 Prometheus",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // Build and start the full application stack when the Codespace is first created.
+  // Subsequent starts reuse existing containers — run `docker compose start` to resume.
+  "postCreateCommand": "docker compose up -d --build",
+
+  "remoteUser": "vscode",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.vscode-typescript-next"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  }
+}

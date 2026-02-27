@@ -33,7 +33,7 @@ const WalletDetail: React.FC = () => {
   const [banks, setBanks] = useState<Bank[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'deposit' | 'withdraw'>('deposit');
+  const [tab, setTab] = useState<'deposit' | 'withdraw' | 'transfer'>('deposit');
   const [page, setPage] = useState(1);
 
   // Deposit form state
@@ -48,16 +48,22 @@ const WalletDetail: React.FC = () => {
   const [wdLoading, setWdLoading] = useState(false);
   const [wdMsg, setWdMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Transfer form state
+  const [trAmount, setTrAmount] = useState('');
+  const [trDestWallet, setTrDestWallet] = useState('');
+  const [trLoading, setTrLoading] = useState(false);
+  const [trMsg, setTrMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const fetchData = async () => {
     try {
       const [walletRes, txRes, banksRes] = await Promise.all([
-        apiClient.get<Wallet>(`/wallets/${id}`),
-        apiClient.get<Transaction[]>(`/wallets/${id}/transactions`),
-        apiClient.get<Bank[]>('/banks').catch(() => ({ data: [] as Bank[] })),
+        apiClient.get<Wallet>(`/v1/wallets/${id}`),
+        apiClient.get<{ transactions: Transaction[] }>(`/v1/wallets/${id}/transactions`),
+        apiClient.get<{ banks: Bank[] }>('/v1/banks').catch(() => ({ data: { banks: [] as Bank[] } })),
       ]);
       setWallet(walletRes.data);
-      setTransactions(txRes.data);
-      setBanks(banksRes.data);
+      setTransactions(txRes.data.transactions ?? []);
+      setBanks(banksRes.data.banks ?? []);
     } catch {
       setError('Failed to load wallet details.');
     } finally {
@@ -75,7 +81,7 @@ const WalletDetail: React.FC = () => {
     if (!amount || amount <= 0) { setDepMsg({ type: 'error', text: 'Enter a valid amount.' }); return; }
     setDepLoading(true);
     try {
-      await apiClient.post(`/wallets/${id}/deposit`, {
+      await apiClient.post(`/v1/wallets/${id}/deposit`, {
         amount,
         currency: wallet?.currency,
         reference: depRef || undefined,
@@ -99,7 +105,7 @@ const WalletDetail: React.FC = () => {
     if (!wdBank) { setWdMsg({ type: 'error', text: 'Select a bank.' }); return; }
     setWdLoading(true);
     try {
-      await apiClient.post(`/wallets/${id}/withdraw`, {
+      await apiClient.post(`/v1/wallets/${id}/withdraw`, {
         amount,
         currency: wallet?.currency,
         bank_id: wdBank,
@@ -112,6 +118,30 @@ const WalletDetail: React.FC = () => {
       setWdMsg({ type: 'error', text: msg });
     } finally {
       setWdLoading(false);
+    }
+  };
+
+  const handleTransfer = async (e: FormEvent) => {
+    e.preventDefault();
+    setTrMsg(null);
+    const amount = parseFloat(trAmount);
+    if (!amount || amount <= 0) { setTrMsg({ type: 'error', text: 'Enter a valid amount.' }); return; }
+    if (!trDestWallet.trim()) { setTrMsg({ type: 'error', text: 'Enter a destination wallet ID.' }); return; }
+    if (trDestWallet.trim() === id!) { setTrMsg({ type: 'error', text: 'Cannot transfer to the same wallet.' }); return; }
+    setTrLoading(true);
+    try {
+      await apiClient.post(`/v1/wallets/${id}/transfer`, {
+        destination_wallet_id: trDestWallet.trim(),
+        amount,
+      });
+      setTrMsg({ type: 'success', text: `Transferred ${formatAmount(amount, wallet?.currency ?? '')} successfully!` });
+      setTrAmount(''); setTrDestWallet('');
+      await fetchData();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Transfer failed.';
+      setTrMsg({ type: 'error', text: msg });
+    } finally {
+      setTrLoading(false);
     }
   };
 
@@ -169,6 +199,9 @@ const WalletDetail: React.FC = () => {
             </button>
             <button className={`tab-btn ${tab === 'withdraw' ? 'active' : ''}`} onClick={() => setTab('withdraw')}>
               ↑ Withdraw
+            </button>
+            <button className={`tab-btn ${tab === 'transfer' ? 'active' : ''}`} onClick={() => setTab('transfer')}>
+              ⇄ Transfer
             </button>
           </div>
 
@@ -246,6 +279,44 @@ const WalletDetail: React.FC = () => {
               </div>
               <button type="submit" className="btn btn-danger btn-block" disabled={wdLoading}>
                 {wdLoading ? <LoadingSpinner size="sm" /> : '↑ Withdraw Funds'}
+              </button>
+            </form>
+          )}
+
+          {tab === 'transfer' && (
+            <form onSubmit={handleTransfer}>
+              {trMsg && (
+                <div className={`alert alert-${trMsg.type === 'success' ? 'success' : 'danger'}`}>
+                  {trMsg.text}
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label">Amount ({wallet.currency})</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  placeholder="0.00"
+                  min="0.01"
+                  step="0.01"
+                  value={trAmount}
+                  onChange={(e) => setTrAmount(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Destination Wallet ID</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={trDestWallet}
+                  onChange={(e) => setTrDestWallet(e.target.value)}
+                />
+                <p className="form-hint">
+                  Must be a {wallet.currency} wallet. For cross-currency transfers, use FX Exchange.
+                </p>
+              </div>
+              <button type="submit" className="btn btn-primary btn-block" disabled={trLoading}>
+                {trLoading ? <LoadingSpinner size="sm" /> : '⇄ Transfer Funds'}
               </button>
             </form>
           )}

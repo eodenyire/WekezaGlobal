@@ -35,12 +35,13 @@ const Cards: React.FC = () => {
   const fetchData = async () => {
     try {
       const [cardsRes, walletsRes] = await Promise.all([
-        apiClient.get<Card[]>('/cards'),
-        apiClient.get<Wallet[]>('/wallets'),
+        apiClient.get<{ cards: Card[] }>('/v1/cards'),
+        apiClient.get<{ wallets: Wallet[] }>('/v1/wallets'),
       ]);
-      setCards(cardsRes.data);
-      setWallets(walletsRes.data);
-      if (walletsRes.data.length > 0) setWalletId(walletsRes.data[0].wallet_id);
+      setCards(cardsRes.data.cards ?? []);
+      setWallets(walletsRes.data.wallets ?? []);
+      const walletsList = walletsRes.data.wallets ?? [];
+      if (walletsList.length > 0) setWalletId(walletsList[0].wallet_id);
     } catch {
       setError('Failed to load cards.');
     } finally {
@@ -64,7 +65,7 @@ const Cards: React.FC = () => {
     }
     setCreating(true);
     try {
-      await apiClient.post('/cards', { wallet_id: walletId, card_type: cardType, spending_limit: spendingLimit });
+      await apiClient.post('/v1/cards', { wallet_id: walletId, card_type: cardType, spending_limit: spendingLimit });
       setCreateMsg({ type: 'success', text: 'Card created successfully!' });
       setShowModal(false);
       setLimit('');
@@ -80,7 +81,7 @@ const Cards: React.FC = () => {
   const handleBlock = async (cardId: string, current: string) => {
     const action = current === 'active' ? 'block' : 'unblock';
     try {
-      await apiClient.patch(`/cards/${cardId}`, { status: current === 'active' ? 'blocked' : 'active' });
+      await apiClient.put(`/v1/cards/${cardId}/status`, { status: current === 'active' ? 'blocked' : 'active' });
       await fetchData();
     } catch {
       alert(`Failed to ${action} card.`);

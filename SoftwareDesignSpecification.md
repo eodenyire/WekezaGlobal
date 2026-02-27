@@ -1,10 +1,10 @@
-# 📄 DOCUMENT 12: SOFTWARE DESIGN SPECIFICATION (SDS)
+# 📄 SOFTWARE DESIGN SPECIFICATION</br>
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Founding Liquidity Partner:** Wekeza Bank
-**Scope:** Pan-African, Full Implementation
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Founding Liquidity Partner:** Wekeza Bank </br>
+**Scope:** Pan-African, Full Implementation </br>
 
----
+----
 
 ## 1️⃣ Objective
 
@@ -218,16 +218,6 @@ This ensures **consistent, scalable, secure, and maintainable implementation**.
 **API → Gateway → Wallet / FX / Settlement**
 **KYC & Compliance monitors all transactions**
 **Credit Intelligence reads all wallet & settlement data**
-
----
-
-## 7️⃣ Next Steps
-
-After SDS, we move to:
-
-1. **Implementation Plan** – step-by-step rollout, testing, and deployment
-2. **Database & API Contracts Finalization** – engineer-ready specs for developers
-3. **Monitoring & Observability Configuration**
 
 ---
 

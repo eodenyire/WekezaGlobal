@@ -1,8 +1,8 @@
-# 📄 DOCUMENT 11: SYSTEM ARCHITECTURE DESIGN
-
-**Project:** Wekeza Global Infrastructure (WGI)
-**Founding Liquidity Partner:** Wekeza Bank
-**Scope:** Pan-African, Full Implementation
+# 📄 SYSTEM ARCHITECTURE DESIGN </br>
+ 
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Founding Liquidity Partner:** Wekeza Bank </br>
+**Scope:** Pan-African, Full Implementation </br>
 
 ---
 
@@ -174,15 +174,6 @@ Provide a **technical blueprint** for WGI that ensures:
   * API usage & uptime
   * Compliance & AML alerts
 * Alerts for SLA breaches, unusual transactions, system errors
-
----
-
-## 10️⃣ Next Steps
-
-After System Architecture, we move to:
-
-1. **System Design Specification (SDS)** → Detailed technical specifications for developers including **module diagrams, sequence diagrams, API contracts, database schemas, data flow diagrams, and infrastructure design**.
-2. **Implementation Plan** → Step-by-step deployment, testing, and rollout strategy.
 
 ---
 

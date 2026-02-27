@@ -1,8 +1,8 @@
-# 📄 DOCUMENT 2: PROBLEM STATEMENT
+# 📄 PROBLEM STATEMENT
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Founding Liquidity Partner:** Wekeza Bank
-**Scope:** Pan-African
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Founding Liquidity Partner:** Wekeza Bank </br>
+**Scope:** Pan-African </br>
 
 ---
 
@@ -98,6 +98,3 @@ WGI addresses this **structural pain** by becoming a bank-agnostic, multi-curren
 > African freelancers, exporters, SMEs, and startups face fragmented banking systems, slow cross-border settlements, high fees, and poor liquidity management. Existing solutions fail to provide seamless multi-currency accounts, intelligent settlement routing, or integrated financial infrastructure. Wekeza Global Infrastructure (WGI), with Wekeza Bank as its founding liquidity partner, will solve these problems by creating a **pan-African, bank-agnostic, multi-currency financial platform**, enabling real-time global income collection, optimized FX, and instant local settlement — positioning Africa as a true participant in the global digital economy.
 
 ---
-
-
-Do you want me to do that?

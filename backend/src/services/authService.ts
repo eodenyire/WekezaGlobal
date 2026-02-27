@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../database';
 import { config } from '../config';
 import { findUserByEmail } from '../models/user';
-import { User, UserRole, JwtPayload, PublicUser } from '../models/types';
+import { User, UserRole, AccountType, JwtPayload, PublicUser } from '../models/types';
 import { createError } from '../middleware/errorHandler';
 
 const SALT_ROUNDS = config.bcryptSaltRounds;
@@ -14,6 +14,7 @@ export interface RegisterInput {
   phone_number?: string;
   password: string;
   role?: UserRole;
+  account_type?: AccountType;
 }
 
 export interface LoginInput {
@@ -42,12 +43,13 @@ export async function register(input: RegisterInput): Promise<AuthTokenResponse>
 
   const password_hash = await bcrypt.hash(input.password, SALT_ROUNDS);
   const role: UserRole = input.role ?? 'user';
+  const account_type: AccountType = input.account_type ?? 'individual';
 
   const { rows } = await pool.query<User>(
-    `INSERT INTO users (full_name, email, phone_number, password_hash, role)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO users (full_name, email, phone_number, password_hash, role, account_type)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [input.full_name, input.email, input.phone_number ?? null, password_hash, role]
+    [input.full_name, input.email, input.phone_number ?? null, password_hash, role, account_type]
   );
 
   const user = rows[0];
@@ -140,5 +142,44 @@ export async function getProfile(userId: string): Promise<PublicUser> {
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password_hash: _ph, ...publicUser } = user;
+  return publicUser;
+}
+
+export interface UpdateProfileInput {
+  full_name?: string;
+  phone_number?: string;
+}
+
+export async function updateProfile(
+  userId: string,
+  input: UpdateProfileInput
+): Promise<PublicUser> {
+  if (!input.full_name && !input.phone_number) {
+    throw createError('At least one field (full_name, phone_number) is required', 400);
+  }
+
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (input.full_name !== undefined) {
+    fields.push(`full_name = $${idx++}`);
+    values.push(input.full_name);
+  }
+  if (input.phone_number !== undefined) {
+    fields.push(`phone_number = $${idx++}`);
+    values.push(input.phone_number);
+  }
+  fields.push(`updated_at = NOW()`);
+  values.push(userId);
+
+  const { rows } = await pool.query<User>(
+    `UPDATE users SET ${fields.join(', ')} WHERE user_id = $${idx} RETURNING *`,
+    values
+  );
+  if (!rows[0]) throw createError('User not found', 404);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { password_hash: _ph, ...publicUser } = rows[0];
   return publicUser;
 }

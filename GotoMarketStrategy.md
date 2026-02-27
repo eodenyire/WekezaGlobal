@@ -1,7 +1,7 @@
-# 📄 GO-TO-MARKET STRATEGY
+# 📄 GO-TO-MARKET STRATEGY </br>
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Founding Liquidity Partner:** Wekeza Bank
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Founding Liquidity Partner:** Wekeza Bank </br>
 
 ---
 
@@ -119,16 +119,4 @@
 
 ---
 
-✅ **Next Step:**
-
-After the GTM strategy, the documentation for WGI will be **complete end-to-end**, covering:
-
-1. PoC → BRD → PRD
-2. System Architecture → SDS → Database Schema → API Contracts
-3. Tech Stack → Security Model → DevOps & Cloud Architecture
-4. Team Structure → Go-to-Market Strategy
-
-At this point, WGI has a **full blueprint for investors, partners, and internal teams**.
-
----
 

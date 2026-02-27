@@ -23,8 +23,8 @@ const Wallets: React.FC = () => {
 
   const fetchWallets = async () => {
     try {
-      const res = await apiClient.get<Wallet[]>('/wallets');
-      setWallets(res.data);
+      const res = await apiClient.get<{ wallets: Wallet[] }>('/v1/wallets');
+      setWallets(res.data.wallets ?? []);
     } catch {
       setError('Failed to load wallets.');
     } finally {
@@ -39,7 +39,7 @@ const Wallets: React.FC = () => {
     setCreateError('');
     setCreating(true);
     try {
-      await apiClient.post('/wallets', { currency });
+      await apiClient.post('/v1/wallets', { currency });
       setShowModal(false);
       await fetchWallets();
     } catch (err: unknown) {

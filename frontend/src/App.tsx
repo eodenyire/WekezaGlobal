@@ -15,6 +15,11 @@ import Cards from './pages/Cards';
 import KYC from './pages/KYC';
 import CreditScore from './pages/CreditScore';
 import AdminDashboard from './pages/AdminDashboard';
+import ApiKeys from './pages/ApiKeys';
+import Notifications from './pages/Notifications';
+import Webhooks from './pages/Webhooks';
+import CollectionAccounts from './pages/CollectionAccounts';
+import Subscriptions from './pages/Subscriptions';
 
 import './styles/global.css';
 
@@ -44,6 +49,11 @@ const App: React.FC = () => (
           <Route path="cards"          element={<Cards />} />
           <Route path="kyc"            element={<KYC />} />
           <Route path="credit"         element={<CreditScore />} />
+          <Route path="api-keys"       element={<ApiKeys />} />
+          <Route path="webhooks"       element={<Webhooks />} />
+          <Route path="collection-accounts" element={<CollectionAccounts />} />
+          <Route path="notifications"  element={<Notifications />} />
+          <Route path="subscriptions"  element={<Subscriptions />} />
           <Route
             path="admin"
             element={

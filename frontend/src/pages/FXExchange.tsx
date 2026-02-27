@@ -1,4 +1,4 @@
-import React, { useEffect, useState, FormEvent } from 'react';
+import React, { useEffect, useState, useMemo, FormEvent } from 'react';
 import apiClient from '../api/client';
 import { FXRate, Wallet } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -32,12 +32,12 @@ const FXExchange: React.FC = () => {
     const fetchData = async () => {
       try {
         const [ratesRes, walletsRes] = await Promise.all([
-          apiClient.get<FXRate[]>('/fx/rates'),
-          apiClient.get<Wallet[]>('/wallets'),
+          apiClient.get<{ rates: FXRate[] }>('/v1/fx/rates'),
+          apiClient.get<{ wallets: Wallet[] }>('/v1/wallets'),
         ]);
-        setRates(ratesRes.data);
-        setWallets(walletsRes.data);
-        if (walletsRes.data.length > 0) setWalletId(walletsRes.data[0].wallet_id);
+        setRates(ratesRes.data.rates ?? []);
+        setWallets(walletsRes.data.wallets ?? []);
+        if (walletsRes.data.wallets && walletsRes.data.wallets.length > 0) setWalletId(walletsRes.data.wallets[0].wallet_id);
       } catch {
         setError('Failed to load FX data.');
       } finally {
@@ -68,6 +68,20 @@ const FXExchange: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [amount, fromCurrency, toCurrency, rates]);
 
+  // Vision: "Remove revenue leakage / FX optimization savings" (success metric §7)
+  // Computes how much the user saves vs a typical bank/PayPal ~3% spread.
+  const TYPICAL_BANK_SPREAD = 0.03;
+  const fxSavings = useMemo(() => {
+    if (preview === null || fromCurrency === toCurrency) return null;
+    const wgiRate = getRate(fromCurrency, toCurrency);
+    const amt = parseFloat(amount);
+    if (!wgiRate || !amt || amt <= 0) return null;
+    const bankWouldReceive = amt * wgiRate * (1 - TYPICAL_BANK_SPREAD);
+    const savings = preview - bankWouldReceive;
+    return { savings, bankWouldReceive };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, fromCurrency, toCurrency, amount, rates]);
+
   const handleConvert = async (e: FormEvent) => {
     e.preventDefault();
     setConvertMsg(null);
@@ -77,8 +91,8 @@ const FXExchange: React.FC = () => {
     if (!walletId) { setConvertMsg({ type: 'error', text: 'Select a wallet.' }); return; }
     setConverting(true);
     try {
-      await apiClient.post('/fx/convert', {
-        wallet_id: walletId,
+      await apiClient.post('/v1/fx/convert', {
+        source_wallet_id: walletId,
         from_currency: fromCurrency,
         to_currency: toCurrency,
         amount: amt,
@@ -283,6 +297,25 @@ const FXExchange: React.FC = () => {
                       Rate: 1 {fromCurrency} = {getRate(fromCurrency, toCurrency)!.toFixed(4)} {toCurrency}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* FX Savings transparency — Vision: "Remove revenue leakage / FX optimization savings" */}
+              {fxSavings !== null && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '10px 12px',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                }}>
+                  <div style={{ fontWeight: 600, color: '#065F46', marginBottom: '4px' }}>
+                    💰 You save {CURRENCY_SYMBOLS[toCurrency] ?? toCurrency}{fxSavings.savings.toFixed(2)} {toCurrency} vs typical bank
+                  </div>
+                  <div style={{ color: '#047857', fontSize: '0.78rem' }}>
+                    Bank / PayPal rate (est. ~3% spread): {CURRENCY_SYMBOLS[toCurrency] ?? toCurrency}{fxSavings.bankWouldReceive.toFixed(2)} · WGI rate: {CURRENCY_SYMBOLS[toCurrency] ?? toCurrency}{preview!.toFixed(2)}
+                  </div>
                 </div>
               )}
 

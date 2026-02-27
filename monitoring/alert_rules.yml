@@ -1,0 +1,113 @@
+groups:
+  - name: wgi_backend_alerts
+    interval: 30s
+    rules:
+      - alert: BackendDown
+        expr: up{job="wgi-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WGI Backend is down"
+          description: "The WGI backend API has been unreachable for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: >
+          rate(http_requests_total{job="wgi-backend",status=~"5.."}[5m])
+          / rate(http_requests_total{job="wgi-backend"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP 5xx error rate"
+          description: "More than 5% of requests are returning 5xx errors."
+
+      - alert: SlowResponseTime
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="wgi-backend"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API response latency (p95 > 2s)"
+          description: "The 95th percentile API response time exceeds 2 seconds."
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job="wgi-backend"} > 500 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend memory usage > 500 MB"
+          description: "The WGI backend process is consuming more than 500 MB of memory."
+
+  - name: wgi_settlement_alerts
+    interval: 60s
+    rules:
+      - alert: HighSettlementFailureRate
+        expr: >
+          rate(http_requests_total{job="wgi-backend",route="/v1/settlements",status="500"}[15m])
+          / rate(http_requests_total{job="wgi-backend",route="/v1/settlements"}[15m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High settlement failure rate (>10%)"
+          description: "More than 10% of settlement requests are failing. Check bank connectivity."
+
+  - name: wgi_aml_alerts
+    interval: 60s
+    rules:
+      - alert: AmlAlertSpike
+        expr: >
+          rate(http_requests_total{job="wgi-backend",route="/v1/aml/alerts"}[10m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Spike in AML alert creation"
+          description: "Unusual number of AML alerts being generated — possible fraud attack."
+
+  - name: wgi_fx_alerts
+    interval: 60s
+    rules:
+      - alert: FxConversionErrorSpike
+        expr: >
+          rate(http_requests_total{job="wgi-backend",route="/v1/fx/convert",status=~"4..|5.."}[5m]) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "FX conversion error spike"
+          # Threshold of 5 errors/s is based on normal P99 traffic; tune with actual baseline.
+          description: "Elevated error rate on /v1/fx/convert — check liquidity provider connectivity."
+
+  - name: wgi_wallet_sla_alerts
+    interval: 30s
+    rules:
+      # BRD NFR-002: Wallet transaction processing latency must be ≤ 5 seconds
+      - alert: WalletUpdateSlaBreached
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="wgi-backend",route=~"/v1/wallets.*"}[5m])
+          ) > 5
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Wallet update SLA breached (p95 > 5s)"
+          description: "BRD NFR-002: The 95th percentile wallet transaction latency exceeds the 5-second SLA. Investigate database or service bottlenecks."
+
+      - alert: CollectionAccountReceiptSlow
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="wgi-backend",route=~"/v1/collection-accounts.*"}[5m])
+          ) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Collection account receipt processing slow (p95 > 5s)"
+          description: "BRD BR-012: Inbound payments on collection accounts should be credited within 5 seconds."

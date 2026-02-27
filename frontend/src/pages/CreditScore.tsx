@@ -35,8 +35,9 @@ const CreditScore: React.FC = () => {
   const [recalcMsg, setRecalcMsg] = useState('');
 
   const fetchScore = async () => {
+    if (!user?.user_id) { setLoading(false); return; }
     try {
-      const res = await apiClient.get<CreditScoreType>('/credit-scores/me');
+      const res = await apiClient.get<CreditScoreType>(`/v1/credit/${user.user_id}`);
       setCreditScore(res.data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -51,13 +52,14 @@ const CreditScore: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchScore(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchScore(); }, [user?.user_id]);
 
   const handleRecalculate = async () => {
     setRecalcMsg('');
     setRecalculating(true);
     try {
-      await apiClient.post('/credit-scores/calculate');
+      await apiClient.post(`/v1/credit/${user?.user_id}/recalculate`);
       setRecalcMsg('Credit score recalculated successfully!');
       await fetchScore();
     } catch {

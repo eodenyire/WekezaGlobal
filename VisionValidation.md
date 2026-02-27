@@ -1,11 +1,11 @@
-# 📑 PHASE 1: CONCEPT & VALIDATION
+# 📑 CONCEPT & VALIDATION
 
 This phase answers one question:
 
 > Should this exist — and why will it win?
 
-We are not writing technical specs yet.
-We are proving commercial, strategic, and regulatory viability.
+We are not writing technical specs yet.</br>
+We are proving commercial, strategic, and regulatory viability.</br>
 
 ---
 
@@ -13,14 +13,14 @@ We are proving commercial, strategic, and regulatory viability.
 
 We will produce the following documents in order:
 
-1️⃣ Executive Vision Document
-2️⃣ Problem Statement
-3️⃣ Market Opportunity & Research
-4️⃣ Competitive Landscape Analysis
-5️⃣ Value Proposition & Differentiation
-6️⃣ Business Model Hypothesis
-7️⃣ Regulatory & Risk Feasibility Snapshot
-8️⃣ PoC Scope Definition
+1️⃣ Executive Vision Document </br>
+2️⃣ Problem Statement </br>
+3️⃣ Market Opportunity & Research</br>
+4️⃣ Competitive Landscape Analysis</br>
+5️⃣ Value Proposition & Differentiation</br>
+6️⃣ Business Model Hypothesis</br>
+7️⃣ Regulatory & Risk Feasibility Snapshot</br>
+8️⃣ PoC Scope Definition</br>
 
 ---
 
@@ -28,10 +28,10 @@ We will produce the following documents in order:
 
 ---
 
-## Project Name (Working)
+## Project Name (Working)</br>
 
-**Wekeza Global Infrastructure (WGI)**
-Tagline:
+**Wekeza Global Infrastructure (WGI)**</br>
+Tagline:</br>
 
 > “Africa’s Cross-Border Financial Rail.”
 
@@ -139,8 +139,5 @@ Build a multi-currency wallet and settlement infrastructure that:
 This becomes the operating layer between:
 
 Global Income → African Liquidity
-
 ---
-
-
 We are building this institutionally now.

@@ -38,9 +38,10 @@ const KYC: React.FC = () => {
   const [uploadMsg, setUploadMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchDocuments = async () => {
+    if (!user?.user_id) { setLoading(false); return; }
     try {
-      const res = await apiClient.get<KYCDocument[]>('/kyc/documents');
-      setDocuments(res.data);
+      const res = await apiClient.get<{ user_id: string; kyc_status: string; documents: KYCDocument[] }>(`/v1/kyc/${user.user_id}`);
+      setDocuments(res.data.documents ?? []);
     } catch {
       setError('Failed to load KYC documents.');
     } finally {
@@ -48,7 +49,8 @@ const KYC: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchDocuments(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchDocuments(); }, [user?.user_id]);
 
   const handleUpload = async (e: FormEvent) => {
     e.preventDefault();
@@ -56,7 +58,7 @@ const KYC: React.FC = () => {
     if (!fileUrl.trim()) { setUploadMsg({ type: 'error', text: 'Please enter a document URL.' }); return; }
     setUploading(true);
     try {
-      await apiClient.post('/kyc/documents', { doc_type: docType, file_url: fileUrl });
+      await apiClient.post('/v1/kyc', { user_id: user?.user_id, doc_type: docType, file_url: fileUrl });
       setUploadMsg({ type: 'success', text: 'Document submitted for verification!' });
       setFileUrl('');
       await fetchDocuments();

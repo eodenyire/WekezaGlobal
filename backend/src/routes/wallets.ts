@@ -11,18 +11,39 @@ router.use(authenticate);
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
 const CreateWalletSchema = z.object({
-  user_id:  z.string().uuid(),
+  user_id:  z.string().uuid().optional(),
   currency: z.enum(['USD','EUR','GBP','KES']),
 });
 
 const DepositSchema = z.object({
-  amount:   z.number().positive(),
-  metadata: z.record(z.unknown()).optional(),
+  amount:    z.number().positive(),
+  currency:  z.string().optional(),  // informational; wallet currency is authoritative
+  reference: z.string().optional(),
+  metadata:  z.record(z.unknown()).optional(),
 });
 
 const WithdrawSchema = z.object({
-  amount:   z.number().positive(),
+  amount:       z.number().positive(),
+  currency:     z.string().optional(),
+  bank_account: z.object({
+    bank_id:        z.string().optional(),
+    account_number: z.string().optional(),
+    account_name:   z.string().optional(),
+  }).optional(),
+  // Legacy top-level bank_id still accepted
+  bank_id:  z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
+});
+
+// ─── GET /v1/wallets  (current user's wallets) ───────────────────────────────
+
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const wallets = await walletService.getUserWallets(req.user!.userId);
+    res.json({ wallets });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── GET /v1/wallets/user/:user_id  (must come before /:wallet_id) ───────────
@@ -37,16 +58,19 @@ router.get('/user/:user_id', async (req: AuthRequest, res: Response, next: NextF
 });
 
 // ─── POST /v1/wallets ────────────────────────────────────────────────────────
+// user_id is optional: omit it to create a wallet for the authenticated user.
+// Admins may supply a different user_id to create wallets on behalf of others.
 
 router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const body = CreateWalletSchema.parse(req.body);
+    const userId = body.user_id ?? req.user!.userId;
     // Only allow users to create wallets for themselves (unless admin)
-    if (req.user?.role !== 'admin' && body.user_id !== req.user?.userId) {
+    if (req.user?.role !== 'admin' && userId !== req.user?.userId) {
       res.status(403).json({ error: 'Forbidden', message: 'Cannot create wallet for another user' });
       return;
     }
-    const wallet = await walletService.createWallet(body.user_id, body.currency);
+    const wallet = await walletService.createWallet(userId, body.currency);
     res.status(201).json(wallet);
   } catch (err) {
     next(err);
@@ -80,12 +104,20 @@ router.get('/:wallet_id/balance', async (req: AuthRequest, res: Response, next: 
 router.post('/:wallet_id/deposit', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const body = DepositSchema.parse(req.body);
-    const result = await walletService.deposit(
-      req.params.wallet_id,
-      body.amount,
-      body.metadata
-    );
-    res.status(201).json(result);
+    // Merge reference into metadata for storage
+    const metadata: Record<string, unknown> = { ...(body.metadata ?? {}) };
+    if (body.reference) metadata.reference = body.reference;
+
+    const result = await walletService.deposit(req.params.wallet_id, body.amount, metadata);
+    const tx = result.transaction;
+    res.status(201).json({
+      transaction_id: tx.transaction_id,
+      wallet_id:      tx.wallet_id,
+      amount:         parseFloat(tx.amount),
+      currency:       tx.currency,
+      status:         tx.status,
+      timestamp:      new Date(tx.created_at).toISOString(),
+    });
   } catch (err) {
     next(err);
   }
@@ -96,8 +128,45 @@ router.post('/:wallet_id/deposit', async (req: AuthRequest, res: Response, next:
 router.post('/:wallet_id/withdraw', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const body = WithdrawSchema.parse(req.body);
-    const result = await walletService.withdraw(
+    // Merge bank_account and bank_id into metadata
+    const metadata: Record<string, unknown> = { ...(body.metadata ?? {}) };
+    if (body.bank_account) {
+      if (body.bank_account.bank_id)        metadata.bank_id        = body.bank_account.bank_id;
+      if (body.bank_account.account_number) metadata.account_number = body.bank_account.account_number;
+      if (body.bank_account.account_name)   metadata.account_name   = body.bank_account.account_name;
+    } else if (body.bank_id) {
+      metadata.bank_id = body.bank_id;
+    }
+
+    const result = await walletService.withdraw(req.params.wallet_id, body.amount, metadata);
+    const tx = result.transaction;
+    res.status(201).json({
+      transaction_id: tx.transaction_id,
+      wallet_id:      tx.wallet_id,
+      amount:         parseFloat(tx.amount),
+      currency:       tx.currency,
+      status:         tx.status,
+      timestamp:      new Date(tx.created_at).toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const TransferSchema = z.object({
+  destination_wallet_id: z.string().uuid(),
+  amount:                z.number().positive(),
+  metadata:              z.record(z.unknown()).optional(),
+});
+
+// ─── POST /v1/wallets/:wallet_id/transfer ────────────────────────────────────
+
+router.post('/:wallet_id/transfer', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = TransferSchema.parse(req.body);
+    const result = await walletService.transfer(
       req.params.wallet_id,
+      body.destination_wallet_id,
       body.amount,
       body.metadata
     );
@@ -119,6 +188,22 @@ router.get('/:wallet_id/transactions', async (req: AuthRequest, res: Response, n
       offset
     );
     res.json({ transactions, limit, offset });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /v1/wallets/transactions  (recent transactions for current user) ─────
+// NOTE: This is exported separately and mounted at /v1/transactions in server.ts
+
+export const transactionsRouter = Router();
+transactionsRouter.use(authenticate);
+
+transactionsRouter.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const transactions = await walletService.getRecentTransactions(req.user!.userId, limit);
+    res.json({ transactions });
   } catch (err) {
     next(err);
   }

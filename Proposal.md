@@ -1,8 +1,8 @@
-# 📄 DOCUMENT 6: FULL PROPOSAL
+# 📄 PROPOSAL
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Founding Liquidity Partner:** Wekeza Bank
-**Scope:** Pan-African
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Founding Liquidity Partner:** Wekeza Bank </br>
+**Scope:** Pan-African </br>
 
 ---
 
@@ -190,12 +190,6 @@ WGI positions itself as **infrastructure**, not just a wallet, enabling Africa�
 * Fraud & compliance incident reduction
 * Platform integration with fintech partners
 * Early data for credit intelligence engine
-
----
-
-✅ **Next Steps:**
-
-Once this **Full Proposal** is agreed, we move to **BRD (Business Requirements Document)** and **PRD (Product Requirements Document)**, where we map **detailed functional specs**, **user stories**, **flows**, and **technical requirements**.
 
 ---
 

@@ -4,6 +4,8 @@
 
 export type KycStatus = 'pending' | 'verified' | 'rejected';
 export type UserRole = 'user' | 'admin' | 'compliance' | 'operations' | 'partner';
+// Vision: Phase 1 user segments (Executive Vision Document §5)
+export type AccountType = 'freelancer' | 'sme' | 'exporter' | 'ecommerce' | 'ngo' | 'startup' | 'individual';
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'KES';
 export type TransactionType = 'deposit' | 'withdrawal' | 'transfer' | 'fx';
 export type TransactionStatus = 'pending' | 'completed' | 'failed';
@@ -24,6 +26,7 @@ export interface User {
   password_hash: string;
   kyc_status: KycStatus;
   role: UserRole;
+  account_type: AccountType;
   created_at: Date;
   updated_at: Date;
 }

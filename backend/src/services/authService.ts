@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../database';
 import { config } from '../config';
 import { findUserByEmail } from '../models/user';
-import { User, UserRole, JwtPayload, PublicUser } from '../models/types';
+import { User, UserRole, AccountType, JwtPayload, PublicUser } from '../models/types';
 import { createError } from '../middleware/errorHandler';
 
 const SALT_ROUNDS = config.bcryptSaltRounds;
@@ -14,6 +14,7 @@ export interface RegisterInput {
   phone_number?: string;
   password: string;
   role?: UserRole;
+  account_type?: AccountType;
 }
 
 export interface LoginInput {
@@ -42,12 +43,13 @@ export async function register(input: RegisterInput): Promise<AuthTokenResponse>
 
   const password_hash = await bcrypt.hash(input.password, SALT_ROUNDS);
   const role: UserRole = input.role ?? 'user';
+  const account_type: AccountType = input.account_type ?? 'individual';
 
   const { rows } = await pool.query<User>(
-    `INSERT INTO users (full_name, email, phone_number, password_hash, role)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO users (full_name, email, phone_number, password_hash, role, account_type)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [input.full_name, input.email, input.phone_number ?? null, password_hash, role]
+    [input.full_name, input.email, input.phone_number ?? null, password_hash, role, account_type]
   );
 
   const user = rows[0];

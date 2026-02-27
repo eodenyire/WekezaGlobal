@@ -13,6 +13,7 @@ const RegisterSchema = z.object({
   phone_number: z.string().optional(),
   password:     z.string().min(8),
   role:         z.enum(['user','admin','compliance','operations','partner']).optional(),
+  account_type: z.enum(['freelancer','sme','exporter','ecommerce','ngo','startup','individual']).optional(),
 });
 
 const LoginSchema = z.object({

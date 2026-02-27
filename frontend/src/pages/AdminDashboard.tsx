@@ -144,6 +144,56 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Vision Phase 1 KPIs: User Segment Breakdown */}
+      {stats && stats.users_by_segment && Object.keys(stats.users_by_segment).length > 0 && (
+        <div className="card" style={{ marginBottom: '24px' }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">👥 User Segments — Phase 1 KPIs</div>
+              <div className="card-subtitle">Target: 2,000 freelancers · 500 SMEs (Executive Vision §5)</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', padding: '0 0 4px' }}>
+            {[
+              { key: 'freelancer', icon: '👨‍💻', label: 'Freelancers',    target: 2000 },
+              { key: 'sme',        icon: '🏢', label: 'SMEs',            target: 500  },
+              { key: 'exporter',   icon: '📦', label: 'Exporters',       target: null },
+              { key: 'ecommerce',  icon: '🛒', label: 'E-Commerce',      target: null },
+              { key: 'ngo',        icon: '🌍', label: 'NGOs',            target: null },
+              { key: 'startup',    icon: '🚀', label: 'Startups',        target: null },
+              { key: 'individual', icon: '👤', label: 'Individuals',     target: null },
+            ].map(({ key, icon, label, target }) => {
+              const count = stats.users_by_segment[key] ?? 0;
+              const pct = target ? Math.min(100, Math.round((count / target) * 100)) : null;
+              return (
+                <div key={key} style={{
+                  flex: '1', minWidth: '130px',
+                  background: 'var(--color-bg)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '14px 16px',
+                  border: '1px solid var(--color-border)',
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '22px', marginBottom: '4px' }}>{icon}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '2px' }}>{label}</div>
+                  <div style={{ fontSize: '22px', fontWeight: 700 }}>{count.toLocaleString()}</div>
+                  {target !== null && (
+                    <div style={{ marginTop: '6px' }}>
+                      <div style={{ background: '#E5E7EB', borderRadius: '4px', height: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, background: '#4F46E5', height: '100%', borderRadius: '4px' }} />
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                        {pct}% of {target.toLocaleString()} target
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Volume by currency */}
       {stats && Object.keys(stats.total_volume_by_currency).length > 0 && (
         <div className="card" style={{ marginBottom: '24px' }}>

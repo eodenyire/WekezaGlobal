@@ -1,3 +1,5 @@
+export type AccountType = 'freelancer' | 'sme' | 'exporter' | 'ecommerce' | 'ngo' | 'startup' | 'individual';
+
 export interface User {
   user_id: string;
   full_name: string;
@@ -5,6 +7,7 @@ export interface User {
   phone_number?: string;
   kyc_status: 'pending' | 'verified' | 'rejected';
   role: 'user' | 'admin' | 'compliance' | 'operations' | 'partner';
+  account_type: AccountType;
   created_at: string;
 }
 
@@ -100,6 +103,8 @@ export interface AdminStats {
   total_volume_by_currency: Record<string, number>;
   pending_kyc: number;
   pending_aml_alerts: number;
+  /** Vision Phase 1 KPIs — user segment counts */
+  users_by_segment: Record<string, number>;
 }
 
 export interface Notification {

@@ -13,7 +13,7 @@ router.use(authenticate, requireRole('admin'));
 
 router.get('/stats', async (_req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const [usersRes, txRes, walletRes, alertRes, pendingKycRes, volByCurrencyRes] = await Promise.all([
+    const [usersRes, txRes, walletRes, alertRes, pendingKycRes, volByCurrencyRes, segmentRes] = await Promise.all([
       pool.query<{ count: string }>('SELECT COUNT(*) AS count FROM users'),
       pool.query<{ count: string; total_volume: string }>(
         `SELECT COUNT(*) AS count,
@@ -34,11 +34,23 @@ router.get('/stats', async (_req: AuthRequest, res: Response, next: NextFunction
          WHERE status = 'completed'
          GROUP BY currency`
       ),
+      // Vision Executive Document §5 — user segments for Phase 1 KPIs
+      pool.query<{ account_type: string; count: string }>(
+        `SELECT COALESCE(account_type, 'individual') AS account_type, COUNT(*) AS count
+         FROM users
+         GROUP BY account_type
+         ORDER BY count DESC`
+      ),
     ]);
 
     const total_volume_by_currency: Record<string, number> = {};
     for (const row of volByCurrencyRes.rows) {
       total_volume_by_currency[row.currency] = parseFloat(row.total);
+    }
+
+    const users_by_segment: Record<string, number> = {};
+    for (const row of segmentRes.rows) {
+      users_by_segment[row.account_type] = parseInt(row.count, 10);
     }
 
     res.json({
@@ -49,6 +61,8 @@ router.get('/stats', async (_req: AuthRequest, res: Response, next: NextFunction
       total_wallets:        parseInt(walletRes.rows[0].count, 10),
       pending_aml_alerts:   parseInt(alertRes.rows[0].count, 10),
       pending_kyc:          parseInt(pendingKycRes.rows[0].count, 10),
+      // Phase 1 Vision KPIs: segment breakdown
+      users_by_segment,
     });
   } catch (err) {
     next(err);

@@ -9,7 +9,7 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  register: (fullName: string, email: string, phone: string, password: string) => Promise<void>;
+  register: (fullName: string, email: string, phone: string, password: string, accountType?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,13 +56,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     fullName: string,
     email: string,
     phone: string,
-    password: string
+    password: string,
+    accountType?: string
   ) => {
     await apiClient.post('/auth/register', {
       full_name: fullName,
       email,
       phone_number: phone,
       password,
+      account_type: accountType ?? 'individual',
     });
     await login(email, password);
   };

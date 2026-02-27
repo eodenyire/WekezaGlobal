@@ -9,6 +9,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
+// Sandbox constant for deterministic mock FX rates
+const SANDBOX_USD_TO_KES_RATE = 134.5;
+
+// Wise transfer status lifecycle
+const WISE_STATUS_WAITING  = 'incoming_payment_waiting';
+const WISE_STATUS_SENT     = 'outgoing_payment_sent';
+
 // ── Health ────────────────────────────────────────────────────────────────────
 
 router.get('/health', (_req: Request, res: Response) => {
@@ -80,10 +87,10 @@ router.post('/fx/convert', (req: Request, res: Response) => {
     sandbox: true,
     transaction_id: uuidv4(),
     amount_from:    amt,
-    amount_to:      amt * 134.5,
+    amount_to:      amt * SANDBOX_USD_TO_KES_RATE,
     currency_from:  currency_from ?? 'USD',
     currency_to:    currency_to   ?? 'KES',
-    fx_rate:        134.5,
+    fx_rate:        SANDBOX_USD_TO_KES_RATE,
     fee:            amt * 0.005,
     status:         'completed',
     timestamp:      new Date().toISOString(),
@@ -259,6 +266,42 @@ router.post('/integrations/ach/transfer', (req: Request, res: Response) => {
     status: 'PENDING',
     effective_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
     created_at: new Date().toISOString(),
+  });
+});
+
+// ─── Wise (TransferWise) adapter ──────────────────────────────────────────────
+// Vision: "Remote workers paid via PayPal, Wise, etc." — Executive Vision Doc §5
+
+router.post('/integrations/wise/transfer', (req: Request, res: Response) => {
+  const { amount, source_currency, target_currency, target_account } = req.body as Record<string, string>;
+  const amt = parseFloat(amount) || 100;
+  // Wise charges a ~0.5% fee on international transfers
+  const fee = parseFloat((amt * 0.005).toFixed(2));
+  res.status(201).json({
+    sandbox: true,
+    adapter: 'wise',
+    transfer_id: `WISE-${uuidv4().split('-')[0].toUpperCase()}`,
+    quote_id: uuidv4(),
+    source_currency: source_currency ?? 'USD',
+    target_currency: target_currency ?? 'KES',
+    source_amount: amt,
+    target_amount: parseFloat(((amt - fee) * SANDBOX_USD_TO_KES_RATE).toFixed(2)),
+    fee,
+    fee_currency: source_currency ?? 'USD',
+    target_account: target_account ?? 'KE-SANDBOX-ACC',
+    status: WISE_STATUS_WAITING,
+    estimated_delivery: new Date(Date.now() + 86400000).toISOString(),
+    created_at: new Date().toISOString(),
+  });
+});
+
+router.get('/integrations/wise/transfer/:transfer_id', (req: Request, res: Response) => {
+  res.json({
+    sandbox: true,
+    adapter: 'wise',
+    transfer_id: req.params.transfer_id,
+    status: WISE_STATUS_SENT,
+    estimated_delivery: new Date(Date.now() + 3600000).toISOString(),
   });
 });
 

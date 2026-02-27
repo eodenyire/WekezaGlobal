@@ -1,8 +1,8 @@
-# 📄 DOCUMENT 8: REVENUE MODEL
+# 📄 REVENUE MODEL
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Founding Liquidity Partner:** Wekeza Bank
-**Scope:** Pan-African, Full Implementation
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Founding Liquidity Partner:** Wekeza Bank </br>
+**Scope:** Pan-African, Full Implementation </br>
 
 ---
 

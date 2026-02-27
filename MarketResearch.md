@@ -1,7 +1,7 @@
-# 📄 DOCUMENT 3: MARKET OPPORTUNITY & RESEARCH
+# 📄 MARKET OPPORTUNITY & RESEARCH </br>
 
-**Project:** Wekeza Global Infrastructure (WGI)
-**Scope:** Pan-African
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Scope:** Pan-African </br>
 
 ---
 
@@ -104,16 +104,5 @@
 3. Mobile adoption + bank API penetration creates an **infrastructure-ready environment**.
 4. Wekeza Bank as founding liquidity partner **adds credibility and compliance ease**.
 5. Platform approach (multi-bank, multi-currency, programmable financial access) is **highly scalable**.
-
----
-
-✅ Next Step: **Competitive Landscape Analysis**
-
-Here we map:
-
-* Direct competitors: Payoneer, PayPal, Wise
-* Local fintechs: Flutterwave, Chipper Cash, PesaPal
-* Banks providing similar services
-* Gaps WGI will fill
 
 ---

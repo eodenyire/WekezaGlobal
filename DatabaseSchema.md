@@ -1,9 +1,14 @@
 # 📄 DATABASE SCHEMA DESIGN
 
+<<<<<<< copilot/ensure-completion-of-system
 **Project:** Wekeza Global Infrastructure (WGI)
 **Databases:** PostgreSQL (primary transactional & analytics DB), Redis (caching & rate limiting)
 
 > **Implementation note:** Credit intelligence and analytics are implemented in PostgreSQL (not a separate MySQL instance). A dedicated analytics store can be introduced in a future phase when read replica isolation becomes necessary for horizontal scaling.
+=======
+**Project:** Wekeza Global Infrastructure (WGI) </br>
+**Databases:** PostgreSQL (primary transactional DB), MySQL (analytics & reporting), Redis (caching for performance)</br>
+>>>>>>> main
 
 ---
 

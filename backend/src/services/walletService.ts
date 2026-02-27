@@ -9,6 +9,47 @@ const BALANCE_TTL = 300; // 5 minutes
 const AML_MEDIUM_THRESHOLD = 10_000; // flag withdrawals above this
 const AML_HIGH_THRESHOLD   = 50_000; // escalate to high severity above this
 
+/**
+ * Enforces daily and per-transaction limits for a wallet.
+ * Security Model §4 — "Daily and per-transaction thresholds, configurable per user or wallet"
+ */
+async function checkTransactionLimits(walletId: string, amount: number): Promise<void> {
+  const { rows: limitRows } = await pool.query<{ daily_limit: string | null; per_tx_limit: string | null }>(
+    'SELECT daily_limit, per_tx_limit FROM wallet_limits WHERE wallet_id = $1',
+    [walletId]
+  );
+  if (limitRows.length === 0) return; // no limits configured — allow
+
+  const limits = limitRows[0];
+
+  if (limits.per_tx_limit !== null) {
+    const perTxLimit = parseFloat(limits.per_tx_limit);
+    if (amount > perTxLimit) {
+      throw createError(`Transaction amount ${amount} exceeds per-transaction limit of ${perTxLimit}`, 422);
+    }
+  }
+
+  if (limits.daily_limit !== null) {
+    const dailyLimit = parseFloat(limits.daily_limit);
+    const { rows: sumRows } = await pool.query<{ total: string }>(
+      `SELECT COALESCE(SUM(amount), 0) AS total
+         FROM transactions
+        WHERE wallet_id  = $1
+          AND type       IN ('withdrawal', 'transfer')
+          AND status     = 'completed'
+          AND created_at >= CURRENT_DATE`,
+      [walletId]
+    );
+    const usedToday = parseFloat(sumRows[0].total);
+    if (usedToday + amount > dailyLimit) {
+      throw createError(
+        `Daily limit of ${dailyLimit} would be exceeded (used: ${usedToday}, requested: ${amount})`,
+        422
+      );
+    }
+  }
+}
+
 function balanceCacheKey(walletId: string): string {
   return `wallet:${walletId}:balance`;
 }
@@ -151,6 +192,8 @@ export async function withdraw(
 ): Promise<{ transaction: Transaction; balance_after: number }> {
   if (amount <= 0) throw createError('Amount must be positive', 400);
 
+  await checkTransactionLimits(walletId, amount);
+
   const wallet = await findWalletById(walletId);
   if (!wallet) throw createError('Wallet not found', 404);
 
@@ -291,6 +334,8 @@ export async function transfer(
   if (amount <= 0) throw createError('Amount must be positive', 400);
   if (sourceWalletId === destinationWalletId) throw createError('Source and destination wallets must differ', 400);
 
+  await checkTransactionLimits(sourceWalletId, amount);
+
   const sourceWallet = await findWalletById(sourceWalletId);
   if (!sourceWallet) throw createError('Source wallet not found', 404);
 
@@ -391,4 +436,54 @@ export async function creditWalletInternal(
 
   await invalidateBalanceCache(walletId);
   return balanceAfter;
+}
+
+export interface WalletLimits {
+  daily_limit?: number | null;
+  per_tx_limit?: number | null;
+}
+
+/**
+ * Creates or updates daily/per-transaction limits for a wallet.
+ * Security Model §4 — "Daily and per-transaction thresholds, configurable per user or wallet"
+ */
+export async function setWalletLimits(
+  walletId: string,
+  limits: WalletLimits
+): Promise<WalletLimits> {
+  const wallet = await findWalletById(walletId);
+  if (!wallet) throw createError('Wallet not found', 404);
+
+  const { rows } = await pool.query<{ daily_limit: string | null; per_tx_limit: string | null }>(
+    `INSERT INTO wallet_limits (wallet_id, daily_limit, per_tx_limit)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (wallet_id) DO UPDATE
+       SET daily_limit  = EXCLUDED.daily_limit,
+           per_tx_limit = EXCLUDED.per_tx_limit,
+           updated_at   = NOW()
+     RETURNING daily_limit, per_tx_limit`,
+    [walletId, limits.daily_limit ?? null, limits.per_tx_limit ?? null]
+  );
+  return {
+    daily_limit:  rows[0].daily_limit  !== null ? parseFloat(rows[0].daily_limit)  : null,
+    per_tx_limit: rows[0].per_tx_limit !== null ? parseFloat(rows[0].per_tx_limit) : null,
+  };
+}
+
+/**
+ * Retrieves the current transaction limits for a wallet.
+ */
+export async function getWalletLimits(walletId: string): Promise<WalletLimits | null> {
+  const wallet = await findWalletById(walletId);
+  if (!wallet) throw createError('Wallet not found', 404);
+
+  const { rows } = await pool.query<{ daily_limit: string | null; per_tx_limit: string | null }>(
+    'SELECT daily_limit, per_tx_limit FROM wallet_limits WHERE wallet_id = $1',
+    [walletId]
+  );
+  if (rows.length === 0) return null;
+  return {
+    daily_limit:  rows[0].daily_limit  !== null ? parseFloat(rows[0].daily_limit)  : null,
+    per_tx_limit: rows[0].per_tx_limit !== null ? parseFloat(rows[0].per_tx_limit) : null,
+  };
 }

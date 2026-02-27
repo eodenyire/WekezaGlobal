@@ -77,11 +77,13 @@ describe('withdraw — input validation', () => {
   });
 
   it('throws 404 when wallet does not exist', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // no limits
     mockFindWalletById.mockResolvedValueOnce(null);
     await expect(withdraw('wallet-1', 50)).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('throws 422 when balance is insufficient (pre-lock check)', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // no limits
     // balance=10, amount=100 → insufficient before pool.connect
     mockFindWalletById.mockResolvedValueOnce(makeWallet({ balance: '10.00' }));
     await expect(withdraw('wallet-1', 100)).rejects.toMatchObject({ statusCode: 422 });
@@ -104,11 +106,13 @@ describe('transfer — input validation', () => {
   });
 
   it('throws 404 when source wallet does not exist', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // no limits
     mockFindWalletById.mockResolvedValueOnce(null);
     await expect(transfer('w1', 'w2', 100)).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('throws 404 when destination wallet does not exist', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // no limits
     mockFindWalletById
       .mockResolvedValueOnce(makeWallet({ wallet_id: 'w1', currency: 'USD' }))
       .mockResolvedValueOnce(null);
@@ -116,6 +120,7 @@ describe('transfer — input validation', () => {
   });
 
   it('throws 400 when wallets have different currencies', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // no limits
     mockFindWalletById
       .mockResolvedValueOnce(makeWallet({ wallet_id: 'w1', currency: 'USD' }))
       .mockResolvedValueOnce(makeWallet({ wallet_id: 'w2', currency: 'KES' as Currency }));

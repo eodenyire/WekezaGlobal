@@ -1,0 +1,3 @@
+alice.qa@wekezaglobal.test / TestPass12345 (user)
+brian.qa@wekezaglobal.test / TestPass12345 (user)
+cathy.compliance@wekezaglobal.test / TestPass12345 (compliance)

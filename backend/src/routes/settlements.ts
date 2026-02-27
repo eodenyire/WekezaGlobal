@@ -3,10 +3,9 @@ import { z } from 'zod';
 import * as settlementService from '../services/settlementService';
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 import { pool } from '../database';
+import { config } from '../config';
 
 const router = Router();
-
-router.use(authenticate);
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -15,6 +14,8 @@ const InitiateSchema = z.object({
   bank_id:   z.string().uuid(),
   amount:    z.number().positive(),
   currency:  z.string().optional(),   // informational; wallet currency is authoritative
+  idempotency_key: z.string().min(8).max(128).optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 const AutoSettleSchema = z.object({
@@ -22,6 +23,43 @@ const AutoSettleSchema = z.object({
   amount:    z.number().positive(),
   country:   z.string().regex(/^[A-Z]{2,3}$/, 'country must be a 2- or 3-letter uppercase ISO 3166-1 code (e.g. KE, NGN)'),
 });
+
+const WebhookSchema = z.object({
+  settlement_id: z.string().uuid().optional(),
+  provider_reference: z.string().min(4).max(128).optional(),
+  status: z.enum(['pending', 'completed', 'failed']),
+  failure_reason: z.string().max(500).optional(),
+});
+
+const ReconciliationQuerySchema = z.object({
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+
+// ─── POST /v1/settlements/webhooks/banks/:bank_id ──────────────────────────
+
+router.post('/webhooks/banks/:bank_id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const sharedSecret = req.headers['x-settlement-webhook-secret'];
+    if (typeof sharedSecret !== 'string' || sharedSecret !== config.settlementWebhookSecret) {
+      res.status(401).json({ error: 'Unauthorized', message: 'Invalid webhook secret' });
+      return;
+    }
+
+    const body = WebhookSchema.parse(req.body);
+    const settlement = await settlementService.finalizeSettlementFromWebhook(
+      req.params.bank_id,
+      body
+    );
+    res.json(settlement);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.use(authenticate);
 
 // ─── GET /v1/settlements  (current user's settlements) ───────────────────────
 
@@ -102,7 +140,11 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => 
     const settlement = await settlementService.initiateSettlement(
       body.wallet_id,
       body.bank_id,
-      body.amount
+      body.amount,
+      {
+        idempotencyKey: body.idempotency_key,
+        metadata: body.metadata,
+      }
     );
     res.status(201).json({
       ...settlement,
@@ -112,6 +154,23 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => 
     next(err);
   }
 });
+
+// ─── GET /v1/settlements/reconciliation/daily ───────────────────────────────
+
+router.get(
+  '/reconciliation/daily',
+  requireRole('admin', 'operations', 'compliance'),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const parsed = ReconciliationQuerySchema.parse(req.query);
+      const date = parsed.date || new Date().toISOString().slice(0, 10);
+      const snapshot = await settlementService.getDailySettlementReconciliation(date);
+      res.json(snapshot);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // ─── GET /v1/settlements/:settlement_id ──────────────────────────────────────
 

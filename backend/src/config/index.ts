@@ -31,6 +31,13 @@ export const config = {
     process.env.SETTLEMENT_COMPLETION_MS || String(2 * 60 * 1000),
     10
   ),
+  settlementWebhookSecret: (() => {
+    const secret = process.env.SETTLEMENT_WEBHOOK_SECRET;
+    if (!secret && process.env.NODE_ENV === 'production') {
+      throw new Error('SETTLEMENT_WEBHOOK_SECRET environment variable must be set in production');
+    }
+    return secret || 'dev-only-settlement-webhook-secret';
+  })(),
 
   // Cards
   defaultCardSpendingLimit: parseFloat(

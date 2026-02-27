@@ -7,6 +7,15 @@ const CURRENCY_FLAGS: Record<string, string> = { USD: '🇺🇸', EUR: '🇪🇺
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', KES: 'KSh' };
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'KES'];
 
+function asNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -50,10 +59,13 @@ const FXExchange: React.FC = () => {
   // Compute preview from loaded rates
   const getRate = (from: string, to: string): number | null => {
     const direct = rates.find((r) => r.currency_from === from && r.currency_to === to);
-    if (direct) return direct.rate;
+    if (direct) return asNumber(direct.rate);
     // Try inverse
     const inverse = rates.find((r) => r.currency_from === to && r.currency_to === from);
-    if (inverse) return 1 / inverse.rate;
+    if (inverse) {
+      const inverseRate = asNumber(inverse.rate);
+      return inverseRate && inverseRate !== 0 ? 1 / inverseRate : null;
+    }
     return null;
   };
 
@@ -201,7 +213,11 @@ const FXExchange: React.FC = () => {
                             {CURRENCY_FLAGS[r.currency_from]}{r.currency_from} / {CURRENCY_FLAGS[r.currency_to]}{r.currency_to}
                           </span>
                         </td>
-                        <td><span className="fx-rate-value">{r.rate.toFixed(4)}</span></td>
+                        <td>
+                          <span className="fx-rate-value">
+                            {asNumber(r.rate)?.toFixed(4) ?? 'N/A'}
+                          </span>
+                        </td>
                         <td><span className="badge badge-info">{r.provider}</span></td>
                         <td style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>{formatDate(r.timestamp)}</td>
                       </tr>

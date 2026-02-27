@@ -9,7 +9,7 @@ export type AccountType = 'freelancer' | 'sme' | 'exporter' | 'ecommerce' | 'ngo
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'KES';
 export type TransactionType = 'deposit' | 'withdrawal' | 'transfer' | 'fx';
 export type TransactionStatus = 'pending' | 'completed' | 'failed';
-export type SettlementStatus = 'pending' | 'completed' | 'failed';
+export type SettlementStatus = 'processing' | 'pending' | 'completed' | 'failed';
 export type CardType = 'virtual' | 'physical';
 export type CardStatus = 'active' | 'blocked' | 'expired';
 export type AlertSeverity = 'low' | 'medium' | 'high';
@@ -110,6 +110,11 @@ export interface Settlement {
   amount: string;
   currency: Currency;
   status: SettlementStatus;
+  provider_reference: string | null;
+  idempotency_key: string | null;
+  failure_reason: string | null;
+  metadata: Record<string, unknown>;
+  completed_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }

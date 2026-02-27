@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wgi-backend-config
+  namespace: wgi
+data:
+  NODE_ENV: "production"
+  PORT: "3001"
+  JWT_EXPIRY: "3600"
+  FX_FEE_RATE: "0.005"
+  RATE_LIMIT_WINDOW_SECONDS: "900"
+  RATE_LIMIT_MAX_REQUESTS: "100"

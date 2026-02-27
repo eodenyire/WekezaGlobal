@@ -204,10 +204,32 @@ WHERE NOT EXISTS (SELECT 1 FROM fx_rates LIMIT 1);
 INSERT INTO banks (name, country, api_endpoint, status)
 SELECT v.name, v.country, v.api_endpoint, v.status
 FROM (VALUES
-  ('Wekeza Bank',              'KE', 'https://api.wekezabank.co.ke/v1',      'active'),
-  ('Equity Bank',              'KE', 'https://api.equitybank.co.ke/v1',      'active'),
-  ('KCB Bank',                 'KE', 'https://api.kcb.co.ke/v1',             'active'),
-  ('Standard Chartered Kenya', 'KE', 'https://api.sc.co.ke/v1',              'active'),
-  ('First Bank Nigeria',       'NG', 'https://api.firstbanknigeria.com/v1',  'active')
+  -- Kenya
+  ('Wekeza Bank',              'KE', 'https://api.wekezabank.co.ke/v1',         'active'),
+  ('Equity Bank',              'KE', 'https://api.equitybank.co.ke/v1',         'active'),
+  ('KCB Bank',                 'KE', 'https://api.kcb.co.ke/v1',                'active'),
+  ('Standard Chartered Kenya', 'KE', 'https://api.sc.co.ke/v1',                 'active'),
+  ('NCBA Bank Kenya',          'KE', 'https://api.ncbabank.co.ke/v1',           'active'),
+  -- Nigeria
+  ('First Bank Nigeria',       'NG', 'https://api.firstbanknigeria.com/v1',     'active'),
+  ('Guaranty Trust Bank',      'NG', 'https://api.gtbank.com/v1',               'active'),
+  ('Zenith Bank Nigeria',      'NG', 'https://api.zenithbank.com/v1',           'active'),
+  ('Access Bank Nigeria',      'NG', 'https://api.accessbankplc.com/v1',       'active'),
+  -- South Africa
+  ('Standard Bank SA',         'ZA', 'https://api.standardbank.co.za/v1',      'active'),
+  ('Absa Bank',                'ZA', 'https://api.absa.co.za/v1',               'active'),
+  -- Ghana
+  ('Ecobank Ghana',            'GH', 'https://api.ecobank.com.gh/v1',           'active'),
+  ('GCB Bank',                 'GH', 'https://api.gcbbank.com.gh/v1',           'active'),
+  -- Tanzania
+  ('CRDB Bank',                'TZ', 'https://api.crdbbank.co.tz/v1',           'active'),
+  ('NMB Bank Tanzania',        'TZ', 'https://api.nmbbank.co.tz/v1',            'active'),
+  -- Uganda
+  ('Stanbic Uganda',           'UG', 'https://api.stanbicbank.co.ug/v1',        'active'),
+  ('Centenary Bank Uganda',    'UG', 'https://api.centenarybank.co.ug/v1',      'active'),
+  -- Ethiopia
+  ('Commercial Bank Ethiopia', 'ET', 'https://api.combanketh.et/v1',            'active'),
+  -- Rwanda
+  ('Bank of Kigali',           'RW', 'https://api.bk.rw/v1',                   'active')
 ) AS v(name, country, api_endpoint, status)
 WHERE NOT EXISTS (SELECT 1 FROM banks LIMIT 1);

@@ -1,0 +1,66 @@
+{
+  "title": "WGI API Overview",
+  "uid": "wgi-api-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "API Uptime",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "targets": [{
+        "expr": "up{job=\"wgi-backend\"}",
+        "legendFormat": "Backend"
+      }],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 2,
+      "type": "graph",
+      "title": "Request Rate (req/s)",
+      "gridPos": { "x": 4, "y": 0, "w": 10, "h": 8 },
+      "targets": [{
+        "expr": "rate(http_requests_total{job=\"wgi-backend\"}[1m])",
+        "legendFormat": "{{method}} {{route}}"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "graph",
+      "title": "Error Rate (%)",
+      "gridPos": { "x": 14, "y": 0, "w": 10, "h": 8 },
+      "targets": [{
+        "expr": "100 * rate(http_requests_total{job=\"wgi-backend\",status=~\"5..\"}[5m]) / rate(http_requests_total{job=\"wgi-backend\"}[5m])",
+        "legendFormat": "5xx %"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "heatmap",
+      "title": "Response Time Distribution",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "rate(http_request_duration_seconds_bucket{job=\"wgi-backend\"}[5m])",
+        "format": "heatmap",
+        "legendFormat": "{{le}}"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "graph",
+      "title": "Memory Usage (MB)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "process_resident_memory_bytes{job=\"wgi-backend\"} / 1024 / 1024",
+        "legendFormat": "RSS (MB)"
+      }]
+    }
+  ]
+}

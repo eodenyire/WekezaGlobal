@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wgi-ingress
+  namespace: wgi
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # TLS 1.3 only
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    # Rate limiting at ingress level (100 req/s per IP)
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - wekeza.global
+        - api.wekeza.global
+      secretName: wgi-tls
+  rules:
+    - host: api.wekeza.global
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wgi-backend
+                port:
+                  number: 3001
+    - host: wekeza.global
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wgi-frontend
+                port:
+                  number: 80

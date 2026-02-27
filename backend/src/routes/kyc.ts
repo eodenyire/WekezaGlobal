@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as kycService from '../services/kycService';
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 import { AlertStatus, AlertSeverity, DocStatus } from '../models/types';
+import { pool } from '../database';
 
 const router = Router();
 
@@ -102,4 +103,47 @@ amlRouter.put('/alerts/:alert_id', requireRole('admin','compliance'), async (req
   }
 });
 
+// POST /v1/aml/scan  — Architecture §4: continuous compliance monitoring
+amlRouter.post('/scan', requireRole('admin','compliance'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const lookbackMinutes = parseInt(req.query.lookback_minutes as string) || 60;
+    const result = await kycService.scanTransactionsForAml(lookbackMinutes);
+    res.json({ ...result, lookback_minutes: lookbackMinutes });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /v1/kyc/reports  — Architecture §3.5: automated regulatory reporting
+const ReportSchema = z.object({
+  period: z.string().min(1),
+  type: z.enum(['aml_summary', 'kyc_status', 'transaction_volume', 'full_compliance']),
+});
+
+const kycReportsRouter = Router();
+kycReportsRouter.use(authenticate, requireRole('admin', 'compliance'));
+kycReportsRouter.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { period, type } = ReportSchema.parse(req.body);
+    const report = await kycService.generateRegulatoryReport(period, type);
+    res.status(201).json(report);
+  } catch (err) {
+    next(err);
+  }
+});
+kycReportsRouter.get('/', async (_req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT report_id, period, type, status, content, generated_at, submitted_at
+       FROM regulatory_reports
+       ORDER BY generated_at DESC
+       LIMIT 50`
+    );
+    res.json({ reports: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+export { kycReportsRouter };
 export default router;

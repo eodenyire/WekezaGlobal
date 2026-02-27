@@ -12,6 +12,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/src/database/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+      - ./backend/src/database/migrations/002_additional_tables.sql:/docker-entrypoint-initdb.d/002_additional_tables.sql
+      - ./backend/src/database/migrations/003_liquidity_providers.sql:/docker-entrypoint-initdb.d/003_liquidity_providers.sql
+      - ./backend/src/database/migrations/004_webhooks.sql:/docker-entrypoint-initdb.d/004_webhooks.sql
+      - ./backend/src/database/migrations/005_collection_accounts.sql:/docker-entrypoint-initdb.d/005_collection_accounts.sql
+      - ./backend/src/database/migrations/006_user_account_type.sql:/docker-entrypoint-initdb.d/006_user_account_type.sql
+      - ./backend/src/database/migrations/007_founding_partner.sql:/docker-entrypoint-initdb.d/007_founding_partner.sql
+      - ./backend/src/database/migrations/008_subscriptions.sql:/docker-entrypoint-initdb.d/008_subscriptions.sql
+      - ./backend/src/database/migrations/009_audit_log.sql:/docker-entrypoint-initdb.d/009_audit_log.sql
+      - ./backend/src/database/migrations/010_mfa_tokens.sql:/docker-entrypoint-initdb.d/010_mfa_tokens.sql
+      - ./backend/src/database/migrations/011_transaction_limits.sql:/docker-entrypoint-initdb.d/011_transaction_limits.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -70,7 +80,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: http://localhost:3001
+        REACT_APP_API_URL: /api
     container_name: wgi_frontend
     ports:
       - "3000:80"
@@ -78,9 +88,155 @@ services:
       - backend
     restart: unless-stopped
 
+  # ─── Analytics ───────────────────────────────────────────────────────────────
+
+  # MySQL — Analytics & Reporting DB (Tech Stack §3)
+  mysql:
+    image: mysql:8.0
+    container_name: wgi_mysql
+    environment:
+      MYSQL_DATABASE: wgi_analytics
+      MYSQL_USER: wgi_analytics_user
+      MYSQL_PASSWORD: ${MYSQL_ANALYTICS_PASSWORD:-wgi_analytics_pass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-wgi_root_pass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/src/database/analytics_schema.sql:/docker-entrypoint-initdb.d/001_analytics_schema.sql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u wgi_analytics_user -p$${MYSQL_ANALYTICS_PASSWORD:-wgi_analytics_pass} --silent"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── Logging (ELK Stack) ─────────────────────────────────────────────────────
+  # Tech Stack §4 — ELK Stack: Centralized logging and auditing
+  # Start with: docker compose --profile logging up
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: wgi_elasticsearch
+    profiles: ["logging"]
+    environment:
+      - discovery.type=single-node
+      # xpack.security is disabled for local development convenience only.
+      # In production, enable xpack.security with TLS + authentication:
+      # https://www.elastic.co/guide/en/elasticsearch/reference/current/configuring-stack-security.html
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qv '\"status\":\"red\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.2
+    container_name: wgi_logstash
+    profiles: ["logging"]
+    volumes:
+      - ./monitoring/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./monitoring/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    ports:
+      - "5044:5044"   # Beats input
+      - "5000:5000/tcp"   # TCP syslog input
+      - "9600:9600"   # Logstash API
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9600/_node/stats | grep -q uptime_in_millis"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    container_name: wgi_kibana
+    profiles: ["logging"]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  # Monitoring — Prometheus + Grafana (Tech Stack §4)
+
+  # Prometheus — metrics collection
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: wgi_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # Grafana — dashboards & alerting
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: wgi_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    ports:
+      - "3003:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # Node Exporter — host-level metrics
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: wgi_node_exporter
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    volumes:
+      - '/:/host:ro,rslave'
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  mysql_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
 
 networks:
   default:

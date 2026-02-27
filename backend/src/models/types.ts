@@ -4,6 +4,8 @@
 
 export type KycStatus = 'pending' | 'verified' | 'rejected';
 export type UserRole = 'user' | 'admin' | 'compliance' | 'operations' | 'partner';
+// Vision: Phase 1 user segments (Executive Vision Document §5)
+export type AccountType = 'freelancer' | 'sme' | 'exporter' | 'ecommerce' | 'ngo' | 'startup' | 'individual';
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'KES';
 export type TransactionType = 'deposit' | 'withdrawal' | 'transfer' | 'fx';
 export type TransactionStatus = 'pending' | 'completed' | 'failed';
@@ -24,6 +26,7 @@ export interface User {
   password_hash: string;
   kyc_status: KycStatus;
   role: UserRole;
+  account_type: AccountType;
   created_at: Date;
   updated_at: Date;
 }
@@ -85,7 +88,19 @@ export interface Bank {
   name: string;
   country: string;
   api_endpoint: string | null;
+  settlement_rules: Record<string, unknown>;
   status: 'active' | 'inactive';
+}
+
+export interface LiquidityProvider {
+  provider_id: string;
+  name: string;
+  rates: Record<string, unknown>;
+  availability: boolean;
+  // Problem Statement §6: Wekeza Bank is the founding liquidity partner
+  is_founding_partner: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface Settlement {
@@ -144,6 +159,15 @@ export interface CreditScore {
   last_updated: Date;
 }
 
+export interface CreditActivityLog {
+  log_id: string;
+  user_id: string;
+  transaction_id: string | null;
+  factor: string;
+  delta: string;
+  created_at: Date;
+}
+
 export interface ApiKey {
   api_key_id: string;
   user_id: string;
@@ -151,6 +175,17 @@ export interface ApiKey {
   name: string | null;
   status: string;
   created_at: Date;
+}
+
+export interface Webhook {
+  webhook_id: string;
+  user_id: string;
+  url: string;
+  events: string[];
+  secret: string;
+  status: 'active' | 'inactive';
+  created_at: Date;
+  updated_at: Date;
 }
 
 // ------ JWT Payload -------
@@ -161,6 +196,34 @@ export interface JwtPayload {
   role: UserRole;
   iat?: number;
   exp?: number;
+}
+
+// ------ Subscription (Proposal §7 Revenue Stream 3) -------
+
+export interface SubscriptionPlan {
+  plan_id:       string;
+  name:          string;
+  display_name:  string;
+  price_usd:     string;
+  billing_cycle: string;
+  features:      string[];
+  is_active:     boolean;
+  created_at:    Date;
+  updated_at:    Date;
+}
+
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'past_due';
+
+export interface UserSubscription {
+  subscription_id: string;
+  user_id:         string;
+  plan_id:         string;
+  status:          SubscriptionStatus;
+  started_at:      Date;
+  expires_at:      Date | null;
+  cancelled_at:    Date | null;
+  created_at:      Date;
+  updated_at:      Date;
 }
 
 // ------ Public API response shapes (strip password_hash) -------

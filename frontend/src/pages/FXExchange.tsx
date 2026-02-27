@@ -1,4 +1,4 @@
-import React, { useEffect, useState, FormEvent } from 'react';
+import React, { useEffect, useState, useMemo, FormEvent } from 'react';
 import apiClient from '../api/client';
 import { FXRate, Wallet } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -67,6 +67,20 @@ const FXExchange: React.FC = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [amount, fromCurrency, toCurrency, rates]);
+
+  // Vision: "Remove revenue leakage / FX optimization savings" (success metric §7)
+  // Computes how much the user saves vs a typical bank/PayPal ~3% spread.
+  const TYPICAL_BANK_SPREAD = 0.03;
+  const fxSavings = useMemo(() => {
+    if (preview === null || fromCurrency === toCurrency) return null;
+    const wgiRate = getRate(fromCurrency, toCurrency);
+    const amt = parseFloat(amount);
+    if (!wgiRate || !amt || amt <= 0) return null;
+    const bankWouldReceive = amt * wgiRate * (1 - TYPICAL_BANK_SPREAD);
+    const savings = preview - bankWouldReceive;
+    return { savings, bankWouldReceive };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, fromCurrency, toCurrency, amount, rates]);
 
   const handleConvert = async (e: FormEvent) => {
     e.preventDefault();
@@ -283,6 +297,25 @@ const FXExchange: React.FC = () => {
                       Rate: 1 {fromCurrency} = {getRate(fromCurrency, toCurrency)!.toFixed(4)} {toCurrency}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* FX Savings transparency — Vision: "Remove revenue leakage / FX optimization savings" */}
+              {fxSavings !== null && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '10px 12px',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                }}>
+                  <div style={{ fontWeight: 600, color: '#065F46', marginBottom: '4px' }}>
+                    💰 You save {CURRENCY_SYMBOLS[toCurrency] ?? toCurrency}{fxSavings.savings.toFixed(2)} {toCurrency} vs typical bank
+                  </div>
+                  <div style={{ color: '#047857', fontSize: '0.78rem' }}>
+                    Bank / PayPal rate (est. ~3% spread): {CURRENCY_SYMBOLS[toCurrency] ?? toCurrency}{fxSavings.bankWouldReceive.toFixed(2)} · WGI rate: {CURRENCY_SYMBOLS[toCurrency] ?? toCurrency}{preview!.toFixed(2)}
+                  </div>
                 </div>
               )}
 

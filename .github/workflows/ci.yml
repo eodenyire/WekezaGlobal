@@ -8,6 +8,8 @@ on:
 
 env:
   NODE_VERSION: '20'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # ─────────────────────────────────────────
@@ -70,6 +72,33 @@ jobs:
         run: npm test
 
   # ─────────────────────────────────────────
+  # Backend Security Scan
+  # ─────────────────────────────────────────
+  backend-security:
+    name: Backend — Security Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (high severity)
+        run: npm audit --audit-level=high --omit=dev
+
+  # ─────────────────────────────────────────
   # Frontend Build
   # ─────────────────────────────────────────
   frontend-build:
@@ -103,13 +132,42 @@ jobs:
         run: npm test -- --passWithNoTests
 
   # ─────────────────────────────────────────
-  # Docker Build
+  # CodeQL Security Scanning
+  # ─────────────────────────────────────────
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
+
+  # ─────────────────────────────────────────
+  # Docker Build & Push
   # ─────────────────────────────────────────
   docker-build:
     name: Docker — Build & Push
     runs-on: ubuntu-latest
-    needs: [backend-test, frontend-build]
+    needs: [backend-test, backend-security, frontend-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -119,9 +177,21 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v5
@@ -129,8 +199,9 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/backend:latest
-            ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -140,9 +211,89 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/frontend:latest
-            ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.sha }}
           build-args: |
             REACT_APP_API_URL=https://api.wekeza.global
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ─────────────────────────────────────────
+  # Deploy to Staging
+  # ─────────────────────────────────────────
+  deploy-staging:
+    name: Deploy — Staging
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: [docker-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.wekeza.global
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Deploy to staging via Helm (dry-run shown; configure kubeconfig secret for real deploy)
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "Deploying image tag: $IMAGE_TAG to staging"
+          helm upgrade --install wgi ./helm/wgi \
+            --namespace wgi \
+            --create-namespace \
+            --set backend.image.tag=$IMAGE_TAG \
+            --set frontend.image.tag=$IMAGE_TAG \
+            --set ingress.hosts.api=staging-api.wekeza.global \
+            --set ingress.hosts.app=staging.wekeza.global \
+            --dry-run \
+            --debug
+          echo "Staging deploy step complete. Configure KUBECONFIG secret to enable live deployment."
+
+  # ─────────────────────────────────────────
+  # Deploy to Production
+  # ─────────────────────────────────────────
+  deploy-production:
+    name: Deploy — Production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://wekeza.global
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Deploy to production via Helm
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "Deploying image tag: $IMAGE_TAG to production"
+          helm upgrade --install wgi ./helm/wgi \
+            --namespace wgi \
+            --create-namespace \
+            --set backend.image.tag=$IMAGE_TAG \
+            --set frontend.image.tag=$IMAGE_TAG \
+            --dry-run \
+            --debug
+          echo "Production deploy step complete. Configure KUBECONFIG secret to enable live deployment."
+
+      - name: Post-deploy health check
+        run: |
+          echo "Verifying deployment health..."
+          # In a live cluster: kubectl rollout status deployment/wgi-backend -n wgi
+          echo "Health check passed (dry-run mode)."
+

@@ -97,6 +97,8 @@ export interface LiquidityProvider {
   name: string;
   rates: Record<string, unknown>;
   availability: boolean;
+  // Problem Statement §6: Wekeza Bank is the founding liquidity partner
+  is_founding_partner: boolean;
   created_at: Date;
   updated_at: Date;
 }

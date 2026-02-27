@@ -17,6 +17,7 @@ services:
       - ./backend/src/database/migrations/004_webhooks.sql:/docker-entrypoint-initdb.d/004_webhooks.sql
       - ./backend/src/database/migrations/005_collection_accounts.sql:/docker-entrypoint-initdb.d/005_collection_accounts.sql
       - ./backend/src/database/migrations/006_user_account_type.sql:/docker-entrypoint-initdb.d/006_user_account_type.sql
+      - ./backend/src/database/migrations/007_founding_partner.sql:/docker-entrypoint-initdb.d/007_founding_partner.sql
     ports:
       - "5432:5432"
     healthcheck:

@@ -78,26 +78,40 @@ export async function getRate(
  * Queries available liquidity providers and returns the one offering the highest
  * rate for the given currency pair (i.e. best conversion for the customer).
  * Architecture §3.2: "Selects route with lowest cost & fastest execution".
+ * Problem Statement §6: Wekeza Bank is the founding liquidity partner —
+ * preferred when rates are equal (tie-breaking rule).
  * Falls back to the DB fx_rates table if no provider has a rate for the pair.
  */
 export async function selectOptimalLiquidityRoute(
   from: Currency,
   to: Currency
-): Promise<{ provider_id: string; provider_name: string; rate: number } | null> {
+): Promise<{ provider_id: string; provider_name: string; rate: number; is_founding_partner: boolean } | null> {
   const rateKey = `${from}_${to}`;
 
   const { rows } = await pool.query<LiquidityProvider>(
-    `SELECT provider_id, name, rates, availability, created_at, updated_at
-     FROM liquidity_providers WHERE availability = TRUE ORDER BY name ASC`
+    `SELECT provider_id, name, rates, availability, is_founding_partner, created_at, updated_at
+     FROM liquidity_providers WHERE availability = TRUE
+     ORDER BY is_founding_partner DESC, name ASC`
   );
 
-  let best: { provider_id: string; provider_name: string; rate: number } | null = null;
+  let best: { provider_id: string; provider_name: string; rate: number; is_founding_partner: boolean } | null = null;
 
   for (const provider of rows) {
     const rates = provider.rates as Record<string, number>;
     const rate = rates[rateKey];
-    if (typeof rate === 'number' && (!best || rate > best.rate)) {
-      best = { provider_id: provider.provider_id, provider_name: provider.name, rate };
+    if (typeof rate === 'number') {
+      // Prefer founding partner (Wekeza Bank) when rate is equal — tie-breaking rule
+      const isBetter = !best
+        || rate > best.rate
+        || (rate === best.rate && provider.is_founding_partner && !best.is_founding_partner);
+      if (isBetter) {
+        best = {
+          provider_id: provider.provider_id,
+          provider_name: provider.name,
+          rate,
+          is_founding_partner: provider.is_founding_partner,
+        };
+      }
     }
   }
 
@@ -107,8 +121,9 @@ export async function selectOptimalLiquidityRoute(
 /** Returns all available liquidity providers (Architecture §3.2) */
 export async function getAvailableLiquidityProviders(): Promise<LiquidityProvider[]> {
   const { rows } = await pool.query<LiquidityProvider>(
-    `SELECT provider_id, name, rates, availability, created_at, updated_at
-     FROM liquidity_providers WHERE availability = TRUE ORDER BY name ASC`
+    `SELECT provider_id, name, rates, availability, is_founding_partner, created_at, updated_at
+     FROM liquidity_providers WHERE availability = TRUE
+     ORDER BY is_founding_partner DESC, name ASC`
   );
   return rows;
 }

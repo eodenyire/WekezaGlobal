@@ -21,7 +21,7 @@ jest.mock('./walletService', () => ({
 }));
 
 // ── Imports ───────────────────────────────────────────────────────────────────
-import { getRate } from './fxService';
+import { getRate, selectOptimalLiquidityRoute } from './fxService';
 import { pool, redis } from '../database';
 import { Currency } from '../models/types';
 
@@ -101,5 +101,73 @@ describe('FX fee math', () => {
     const fee = Math.round(amount * FX_FEE_RATE * 10000) / 10000;
     const amountAfterFee = Math.round((amount - fee) * 10000) / 10000;
     expect(amountAfterFee).toBeCloseTo(0.01 - fee, 4);
+  });
+});
+
+// ── Founding liquidity partner routing (Problem Statement §6) ─────────────────
+
+/** Factory for liquidity provider mock rows — reduces test verbosity */
+function makeLiquidityProvider(
+  overrides: Partial<{ provider_id: string; name: string; rates: Record<string, number>; is_founding_partner: boolean }>
+) {
+  return {
+    provider_id:        overrides.provider_id        ?? 'p1',
+    name:               overrides.name               ?? 'Test Provider',
+    rates:              overrides.rates               ?? {},
+    availability:       true,
+    is_founding_partner: overrides.is_founding_partner ?? false,
+    created_at:         new Date(),
+    updated_at:         new Date(),
+  };
+}
+
+describe('selectOptimalLiquidityRoute — founding partner preference', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('selects the provider with the best rate', async () => {
+    mockPool.query.mockResolvedValueOnce({
+      rows: [
+        makeLiquidityProvider({ provider_id: 'p1', name: 'Wekeza Bank Liquidity', rates: { USD_KES: 134.5 }, is_founding_partner: true }),
+        makeLiquidityProvider({ provider_id: 'p2', name: 'Equity Markets Desk',   rates: { USD_KES: 134.1 }, is_founding_partner: false }),
+      ],
+    } as never);
+
+    const result = await selectOptimalLiquidityRoute('USD' as Currency, 'KES' as Currency);
+    expect(result).not.toBeNull();
+    expect(result!.provider_name).toBe('Wekeza Bank Liquidity');
+    expect(result!.rate).toBe(134.5);
+    expect(result!.is_founding_partner).toBe(true);
+  });
+
+  it('prefers founding partner (Wekeza Bank) when rates are equal — tie-breaking', async () => {
+    mockPool.query.mockResolvedValueOnce({
+      rows: [
+        // Non-founding partner listed first in DB — should NOT win the tie
+        makeLiquidityProvider({ provider_id: 'p2', name: 'Equity Markets Desk',   rates: { USD_KES: 134.5 }, is_founding_partner: false }),
+        makeLiquidityProvider({ provider_id: 'p1', name: 'Wekeza Bank Liquidity', rates: { USD_KES: 134.5 }, is_founding_partner: true }),
+      ],
+    } as never);
+
+    const result = await selectOptimalLiquidityRoute('USD' as Currency, 'KES' as Currency);
+    expect(result).not.toBeNull();
+    expect(result!.provider_name).toBe('Wekeza Bank Liquidity');
+    expect(result!.is_founding_partner).toBe(true);
+  });
+
+  it('returns null when no provider has the requested pair', async () => {
+    mockPool.query.mockResolvedValueOnce({
+      rows: [
+        makeLiquidityProvider({ provider_id: 'p1', name: 'Wekeza Bank Liquidity', rates: { EUR_KES: 146.2 }, is_founding_partner: true }),
+      ],
+    } as never);
+
+    const result = await selectOptimalLiquidityRoute('USD' as Currency, 'GBP' as Currency);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when no providers are available', async () => {
+    mockPool.query.mockResolvedValueOnce({ rows: [] } as never);
+    const result = await selectOptimalLiquidityRoute('USD' as Currency, 'KES' as Currency);
+    expect(result).toBeNull();
   });
 });

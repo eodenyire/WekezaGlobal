@@ -138,3 +138,24 @@ export interface WebhookCreationResponse extends Webhook {
   /** HMAC-SHA256 signing secret. Shown only once at creation time. */
   secret: string;
 }
+
+// ─── Collection Accounts (BRD BR-010 / BR-011 / BR-012) ──────────────────────
+
+export type PaymentRail = 'ACH' | 'SWIFT' | 'SEPA';
+
+export interface CollectionAccount {
+  collection_account_id: string;
+  user_id: string;
+  wallet_id: string;
+  rail: PaymentRail;
+  currency: string;
+  label: string | null;
+  routing_number: string | null;
+  account_number: string | null;
+  iban: string | null;
+  bic: string | null;
+  reference_code: string;
+  status: 'active' | 'closed';
+  created_at: string;
+  updated_at: string;
+}

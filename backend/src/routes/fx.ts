@@ -128,4 +128,78 @@ router.get('/best-route/:from/:to', async (req: AuthRequest, res: Response, next
   }
 });
 
+// ─── POST /v1/fx/hedge-quote ──────────────────────────────────────────────────
+// BRD BR-009 — hedge exposure for large settlements using algorithmic routing
+// Returns the optimal hedge strategy (split across liquidity providers) for
+// large conversions to minimise slippage and FX risk.
+
+const HEDGE_THRESHOLD_USD = 10000; // conversions above this amount get multi-route hedging
+
+router.post('/hedge-quote', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { amount, from_currency, to_currency } = z.object({
+      amount:        z.number().positive(),
+      from_currency: z.string().length(3),
+      to_currency:   z.string().length(3),
+    }).parse(req.body);
+
+    const rate = await fxService.getRate(from_currency as Currency, to_currency as Currency);
+    const rateNum = parseFloat(rate.rate);
+
+    // For large settlements, attempt multi-route split to reduce slippage
+    if (amount >= HEDGE_THRESHOLD_USD) {
+      const providers = await fxService.getAvailableLiquidityProviders();
+      const routes = providers
+        .map((p) => {
+          const rates = p.rates as Record<string, number>;
+          const pairRate = rates[`${from_currency}_${to_currency}`];
+          return pairRate ? { provider_id: p.provider_id, name: p.name, rate: pairRate } : null;
+        })
+        .filter((r): r is { provider_id: string; name: string; rate: number } => r !== null)
+        .sort((a, b) => b.rate - a.rate);
+
+      if (routes.length >= 2) {
+        // Split 60/40 across best two routes to hedge slippage
+        const split = [
+          { ...routes[0], allocation_pct: 60, allocated_amount: amount * 0.6, converted: amount * 0.6 * routes[0].rate },
+          { ...routes[1], allocation_pct: 40, allocated_amount: amount * 0.4, converted: amount * 0.4 * routes[1].rate },
+        ];
+        const blended_rate = split.reduce((acc, r) => acc + r.rate * (r.allocation_pct / 100), 0);
+        const total_converted = split.reduce((acc, r) => acc + r.converted, 0);
+        // Savings = multi-route output (target currency) minus what the system spot rate would yield
+        const spot_converted = amount * rateNum;
+        return res.json({
+          strategy: 'multi_route_hedge',
+          from_currency,
+          to_currency,
+          amount,
+          hedge_threshold_usd: HEDGE_THRESHOLD_USD,
+          blended_rate,
+          total_converted,
+          spot_converted,
+          routes: split,
+          estimated_savings_vs_spot: parseFloat((total_converted - spot_converted).toFixed(4)),
+          generated_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Below threshold or insufficient providers: single-route spot quote
+    res.json({
+      strategy: 'spot',
+      from_currency,
+      to_currency,
+      amount,
+      hedge_threshold_usd: HEDGE_THRESHOLD_USD,
+      blended_rate: rateNum,
+      total_converted: amount * rateNum,
+      routes: [{ name: 'WGI System Rate', rate: rateNum, allocation_pct: 100, allocated_amount: amount, converted: amount * rateNum }],
+      estimated_savings_vs_spot: 0,
+      generated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

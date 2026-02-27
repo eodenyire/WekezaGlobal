@@ -15,6 +15,7 @@ services:
       - ./backend/src/database/migrations/002_additional_tables.sql:/docker-entrypoint-initdb.d/002_additional_tables.sql
       - ./backend/src/database/migrations/003_liquidity_providers.sql:/docker-entrypoint-initdb.d/003_liquidity_providers.sql
       - ./backend/src/database/migrations/004_webhooks.sql:/docker-entrypoint-initdb.d/004_webhooks.sql
+      - ./backend/src/database/migrations/005_collection_accounts.sql:/docker-entrypoint-initdb.d/005_collection_accounts.sql
     ports:
       - "5432:5432"
     healthcheck:

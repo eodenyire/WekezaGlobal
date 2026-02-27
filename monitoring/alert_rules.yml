@@ -83,3 +83,31 @@ groups:
           summary: "FX conversion error spike"
           # Threshold of 5 errors/s is based on normal P99 traffic; tune with actual baseline.
           description: "Elevated error rate on /v1/fx/convert — check liquidity provider connectivity."
+
+  - name: wgi_wallet_sla_alerts
+    interval: 30s
+    rules:
+      # BRD NFR-002: Wallet transaction processing latency must be ≤ 5 seconds
+      - alert: WalletUpdateSlaBreached
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="wgi-backend",route=~"/v1/wallets.*"}[5m])
+          ) > 5
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Wallet update SLA breached (p95 > 5s)"
+          description: "BRD NFR-002: The 95th percentile wallet transaction latency exceeds the 5-second SLA. Investigate database or service bottlenecks."
+
+      - alert: CollectionAccountReceiptSlow
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="wgi-backend",route=~"/v1/collection-accounts.*"}[5m])
+          ) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Collection account receipt processing slow (p95 > 5s)"
+          description: "BRD BR-012: Inbound payments on collection accounts should be credited within 5 seconds."

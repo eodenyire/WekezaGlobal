@@ -21,6 +21,7 @@ import notificationRoutes from './routes/notifications';
 import apiKeyRoutes     from './routes/apiKeys';
 import webhookRoutes    from './routes/webhooks';
 import sandboxRoutes    from './routes/sandbox';
+import collectionAccountRoutes from './routes/collectionAccounts';
 
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/v1/notifications',  notificationRoutes);
 app.use('/v1/api-keys',       apiKeyRoutes);
 app.use('/v1/webhooks',       webhookRoutes);
 app.use('/v1/sandbox',        sandboxRoutes);
+app.use('/v1/collection-accounts', collectionAccountRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

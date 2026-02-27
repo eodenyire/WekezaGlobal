@@ -198,6 +198,34 @@ export interface JwtPayload {
   exp?: number;
 }
 
+// ------ Subscription (Proposal §7 Revenue Stream 3) -------
+
+export interface SubscriptionPlan {
+  plan_id:       string;
+  name:          string;
+  display_name:  string;
+  price_usd:     string;
+  billing_cycle: string;
+  features:      string[];
+  is_active:     boolean;
+  created_at:    Date;
+  updated_at:    Date;
+}
+
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'past_due';
+
+export interface UserSubscription {
+  subscription_id: string;
+  user_id:         string;
+  plan_id:         string;
+  status:          SubscriptionStatus;
+  started_at:      Date;
+  expires_at:      Date | null;
+  cancelled_at:    Date | null;
+  created_at:      Date;
+  updated_at:      Date;
+}
+
 // ------ Public API response shapes (strip password_hash) -------
 
 export type PublicUser = Omit<User, 'password_hash'>;

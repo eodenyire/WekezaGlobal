@@ -223,6 +223,59 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Proposal §10 Key Metrics for Success */}
+      {stats?.key_metrics && (
+        <div className="card" style={{ marginBottom: '24px' }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">📊 Key Metrics for Success — Proposal §10</div>
+              <div className="card-subtitle">Settlement speed · Multi-bank reliability · Partner integrations · Credit intelligence</div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            {[
+              {
+                icon: '⚡', label: 'Avg Settlement Speed',
+                value: `${stats.key_metrics.avg_settlement_minutes} min`,
+                sub: 'Target: real-time (<2h)',
+                color: '#0891B2',
+              },
+              {
+                icon: '🏦', label: 'Active Banks',
+                value: `${stats.key_metrics.active_banks} / ${stats.key_metrics.total_banks}`,
+                sub: 'Multi-bank redundancy',
+                color: '#4F46E5',
+              },
+              {
+                icon: '🔑', label: 'API Partners',
+                value: (stats.key_metrics.active_api_keys + stats.key_metrics.active_webhooks).toString(),
+                sub: `${stats.key_metrics.active_api_keys} keys · ${stats.key_metrics.active_webhooks} webhooks`,
+                color: '#7C3AED',
+              },
+              {
+                icon: '🤖', label: 'Credit Intelligence',
+                value: stats.key_metrics.credit_intelligence_users.toString(),
+                sub: 'Users with credit data',
+                color: '#059669',
+              },
+            ].map(({ icon, label, value, sub, color }) => (
+              <div key={label} style={{
+                background: 'var(--color-bg)',
+                borderRadius: 'var(--radius-md)',
+                padding: '16px',
+                border: `1px solid var(--color-border)`,
+                borderTop: `3px solid ${color}`,
+              }}>
+                <div style={{ fontSize: '22px', marginBottom: '6px' }}>{icon}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>{label}</div>
+                <div style={{ fontSize: '22px', fontWeight: 700, color }}>{value}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid-2" style={{ marginBottom: '24px' }}>
         {/* Recent Users */}
         <div className="card">

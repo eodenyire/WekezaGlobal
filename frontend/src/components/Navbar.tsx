@@ -14,6 +14,7 @@ const navItems = [
   { path: '/api-keys',           icon: '🔑', label: 'API Keys',             section: 'account' },
   { path: '/webhooks',           icon: '🔗', label: 'Webhooks',             section: 'account' },
   { path: '/notifications',      icon: '🔔', label: 'Notifications',        section: 'account' },
+  { path: '/subscriptions',     icon: '💎', label: 'Subscription',          section: 'account' },
   { path: '/admin',              icon: '⚙️',  label: 'Admin',                section: 'admin', adminOnly: true },
 ];
 

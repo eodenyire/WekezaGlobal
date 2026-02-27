@@ -105,6 +105,15 @@ export interface AdminStats {
   pending_aml_alerts: number;
   /** Vision Phase 1 KPIs — user segment counts */
   users_by_segment: Record<string, number>;
+  /** Proposal §10 Key Metrics */
+  key_metrics?: {
+    avg_settlement_minutes:    number;
+    total_banks:               number;
+    active_banks:              number;
+    active_api_keys:           number;
+    active_webhooks:           number;
+    credit_intelligence_users: number;
+  };
 }
 
 export interface Notification {
@@ -163,4 +172,34 @@ export interface CollectionAccount {
   status: 'active' | 'closed';
   created_at: string;
   updated_at: string;
+}
+
+// ─── Subscriptions (Proposal §7 Revenue Stream 3) ────────────────────────────
+
+export interface SubscriptionPlan {
+  plan_id:       string;
+  name:          string;
+  display_name:  string;
+  price_usd:     string;
+  billing_cycle: string;
+  features:      string[];
+  is_active:     boolean;
+  created_at:    string;
+  updated_at:    string;
+}
+
+export interface UserSubscription {
+  subscription_id: string;
+  user_id:         string;
+  plan_id:         string;
+  status:          'active' | 'cancelled' | 'expired' | 'past_due';
+  plan_name?:      string;
+  display_name?:   string;
+  price_usd?:      string;
+  features?:       string[];
+  started_at:      string;
+  expires_at:      string | null;
+  cancelled_at:    string | null;
+  created_at:      string;
+  updated_at:      string;
 }

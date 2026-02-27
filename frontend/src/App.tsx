@@ -19,6 +19,7 @@ import ApiKeys from './pages/ApiKeys';
 import Notifications from './pages/Notifications';
 import Webhooks from './pages/Webhooks';
 import CollectionAccounts from './pages/CollectionAccounts';
+import Subscriptions from './pages/Subscriptions';
 
 import './styles/global.css';
 
@@ -52,6 +53,7 @@ const App: React.FC = () => (
           <Route path="webhooks"       element={<Webhooks />} />
           <Route path="collection-accounts" element={<CollectionAccounts />} />
           <Route path="notifications"  element={<Notifications />} />
+          <Route path="subscriptions"  element={<Subscriptions />} />
           <Route
             path="admin"
             element={

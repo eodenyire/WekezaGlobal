@@ -80,7 +80,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: http://localhost:3001
+        REACT_APP_API_URL: /api
     container_name: wgi_frontend
     ports:
       - "3000:80"

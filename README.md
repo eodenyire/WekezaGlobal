@@ -2,6 +2,8 @@
 
 > **Pan-African, Bank-Agnostic, Multi-Currency Financial Infrastructure Platform**
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/eodenyire/WekezaGlobal)
+
 WGI enables African freelancers, SMEs, exporters, and fintechs to receive global payments, manage multi-currency wallets, perform FX optimization, and settle funds to any African bank — all through a unified, secure, programmable platform.
 
 ---
@@ -32,11 +34,35 @@ WGI enables African freelancers, SMEs, exporters, and fintechs to receive global
 | **Docker** | 24+ | [docs.docker.com](https://docs.docker.com/get-docker/) |
 | **Docker Compose** | v2 (bundled with Docker Desktop) | bundled |
 | **Git** | any | [git-scm.com](https://git-scm.com) |
-| Node.js | 20+ | only needed for local dev (Option 2) |
+| Node.js | 20+ | only needed for local dev (Option 3) |
 
 ---
 
-### ⚡ Option 1: One-Command Start (Docker Compose — recommended)
+### 🌐 Option 1: GitHub Codespaces — run entirely online, no install needed
+
+> **This is the fastest way to try WGI.** No Docker, no Node.js, nothing to install — just a browser.
+
+1. Click the badge at the top of this page **or** go to the GitHub repository page,  
+   click **Code → Codespaces → Create codespace on main**.
+2. GitHub will provision a cloud VM, clone the repo, and automatically run  
+   `docker compose up -d --build` to start the full application stack.
+3. Once the build finishes (~2–4 min), VS Code in the browser opens.  
+   A notification will appear with the forwarded URL for each service — click **Open in Browser** on port 3000.
+
+| Port | Service | Auto-opens? |
+|------|---------|------------|
+| **3000** | 🌍 WGI Frontend | ✅ opens in browser |
+| **3001** | ⚙️  Backend REST API | notified |
+| **3003** | 📊 Grafana (`admin` / `admin`) | notified |
+| **9090** | 📈 Prometheus | silent |
+
+> All ports are securely forwarded over HTTPS — no firewall rules needed.  
+> The frontend talks to the backend through the built-in nginx reverse proxy (`/api/*`),  
+> so everything works on the same Codespace URL without any CORS issues.
+
+---
+
+### ⚡ Option 2: One-Command Start (Docker Compose — local)
 
 ```bash
 # 1. Clone
@@ -64,7 +90,7 @@ docker compose --profile logging up -d
 
 ---
 
-### 🛠️ Option 2: Local Development (hot-reload)
+### 🛠️ Option 3: Local Development (hot-reload)
 
 ```bash
 # 1. Start only infrastructure dependencies
@@ -79,7 +105,7 @@ npm run dev                 # http://localhost:3001
 # 3. Frontend (new terminal)
 cd ../frontend
 npm install
-REACT_APP_API_URL=http://localhost:3001 npm start   # http://localhost:3000
+npm start   # http://localhost:3000  (setupProxy.js routes /api/* to port 3001)
 ```
 
 ---

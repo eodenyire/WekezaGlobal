@@ -3,9 +3,13 @@
  * Provides a safe test environment for fintech partners to exercise all API
  * endpoints without affecting production data.  All responses are clearly
  * flagged with "sandbox: true" and use deterministic mock data.
+ *
+ * Schema §2 Redis: API keys are authenticated via X-API-Key header and their
+ * usage is tracked per-key in Redis ("Per API key usage count").
  */
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { authenticateApiKey, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -16,11 +20,15 @@ const SANDBOX_USD_TO_KES_RATE = 134.5;
 const WISE_STATUS_WAITING  = 'incoming_payment_waiting';
 const WISE_STATUS_SENT     = 'outgoing_payment_sent';
 
-// ── Health ────────────────────────────────────────────────────────────────────
+// ── Health (no auth required — lets partners verify connectivity) ─────────────
 
 router.get('/health', (_req: Request, res: Response) => {
   res.json({ sandbox: true, status: 'ok', environment: 'sandbox' });
 });
+
+// ── All other sandbox routes require a valid API key ─────────────────────────
+// Schema §2: "API Rate Limiting / Throttling: Per API key usage count"
+router.use(authenticateApiKey as (req: Request, res: Response, next: NextFunction) => void);
 
 // ── Mock wallet ───────────────────────────────────────────────────────────────
 

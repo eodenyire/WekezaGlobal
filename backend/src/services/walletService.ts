@@ -264,6 +264,120 @@ export async function withdraw(
   }
 }
 
+export async function transfer(
+  fromWalletId: string,
+  toWalletId: string,
+  amount: number,
+  metadata: Record<string, unknown> = {}
+): Promise<{ transaction: Transaction; from_balance_after: number; to_balance_after: number }> {
+  if (amount <= 0) throw createError('Amount must be positive', 400);
+  if (fromWalletId === toWalletId) throw createError('Source and destination wallets must be different', 400);
+
+  const [fromWallet, toWallet] = await Promise.all([
+    findWalletById(fromWalletId),
+    findWalletById(toWalletId),
+  ]);
+
+  if (!fromWallet) throw createError('Source wallet not found', 404);
+  if (!toWallet) throw createError('Destination wallet not found', 404);
+  if (fromWallet.currency !== toWallet.currency) {
+    throw createError('Cross-currency transfers are not supported. Use FX conversion first.', 422);
+  }
+
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const firstWalletId = fromWalletId < toWalletId ? fromWalletId : toWalletId;
+    const secondWalletId = fromWalletId < toWalletId ? toWalletId : fromWalletId;
+
+    const { rows: lockedRows } = await client.query<{ wallet_id: string; balance: string }>(
+      `SELECT wallet_id, balance
+       FROM wallets
+       WHERE wallet_id IN ($1, $2)
+       ORDER BY wallet_id
+       FOR UPDATE`,
+      [firstWalletId, secondWalletId]
+    );
+
+    if (lockedRows.length !== 2) {
+      throw createError('One or more wallets were not found', 404);
+    }
+
+    const lockedBalances = new Map(lockedRows.map((row) => [row.wallet_id, parseFloat(row.balance)]));
+    const sourceBalance = lockedBalances.get(fromWalletId);
+
+    if (sourceBalance === undefined) {
+      throw createError('Source wallet not found', 404);
+    }
+    if (sourceBalance < amount) {
+      throw createError('Insufficient funds', 422);
+    }
+
+    const transferMetadata = {
+      ...metadata,
+      from_wallet_id: fromWalletId,
+      to_wallet_id: toWalletId,
+    };
+
+    const { rows: txRows } = await client.query<Transaction>(
+      `INSERT INTO transactions (wallet_id, type, amount, currency, status, metadata)
+       VALUES ($1, 'transfer', $2, $3, 'completed', $4)
+       RETURNING *`,
+      [fromWalletId, amount, fromWallet.currency, JSON.stringify(transferMetadata)]
+    );
+    const tx = txRows[0];
+
+    const { rows: fromRows } = await client.query<Wallet>(
+      `UPDATE wallets
+       SET balance = balance - $1, updated_at = NOW()
+       WHERE wallet_id = $2
+       RETURNING balance`,
+      [amount, fromWalletId]
+    );
+    const fromBalanceAfter = parseFloat(fromRows[0].balance);
+
+    const { rows: toRows } = await client.query<Wallet>(
+      `UPDATE wallets
+       SET balance = balance + $1, updated_at = NOW()
+       WHERE wallet_id = $2
+       RETURNING balance`,
+      [amount, toWalletId]
+    );
+    const toBalanceAfter = parseFloat(toRows[0].balance);
+
+    await client.query(
+      `INSERT INTO ledger_entries (transaction_id, wallet_id, debit, balance_after)
+       VALUES ($1, $2, $3, $4)`,
+      [tx.transaction_id, fromWalletId, amount, fromBalanceAfter]
+    );
+
+    await client.query(
+      `INSERT INTO ledger_entries (transaction_id, wallet_id, credit, balance_after)
+       VALUES ($1, $2, $3, $4)`,
+      [tx.transaction_id, toWalletId, amount, toBalanceAfter]
+    );
+
+    await client.query('COMMIT');
+
+    await Promise.all([
+      invalidateBalanceCache(fromWalletId),
+      invalidateBalanceCache(toWalletId),
+    ]);
+
+    return {
+      transaction: tx,
+      from_balance_after: fromBalanceAfter,
+      to_balance_after: toBalanceAfter,
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function getTransactions(
   walletId: string,
   limit = 50,

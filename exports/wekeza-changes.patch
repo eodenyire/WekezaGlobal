@@ -1,0 +1,21 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 381a886..fb5cdb9 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -10,6 +10,8 @@ services:
+     volumes:
+       - postgres_data:/var/lib/postgresql/data
+       - ./backend/src/database/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
++      - ./backend/src/database/migrations/002_settlement_production_hardening.sql:/docker-entrypoint-initdb.d/002_settlement_production_hardening.sql
++      - ./backend/src/database/migrations/003_seed_test_accounts.sql:/docker-entrypoint-initdb.d/003_seed_test_accounts.sql
+     ports:
+       - "5432:5432"
+     healthcheck:
+@@ -44,6 +46,7 @@ services:
+       DATABASE_URL: postgresql://wgi_user:wgi_pass@postgres:5432/wgi_db
+       REDIS_URL: redis://redis:6379
+       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-super-secret-key}
++      SETTLEMENT_WEBHOOK_SECRET: ${SETTLEMENT_WEBHOOK_SECRET:-change-me-in-production-webhook-secret}
+       JWT_EXPIRY: 3600
+       OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID:-wgi-client}
+       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:-wgi-client-secret}

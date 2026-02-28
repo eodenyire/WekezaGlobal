@@ -35,6 +35,13 @@ const WithdrawSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 
+const TransferSchema = z.object({
+  from_wallet_id: z.string().uuid(),
+  to_wallet_id: z.string().uuid(),
+  amount: z.number().positive(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
 // ─── GET /v1/wallets  (current user's wallets) ───────────────────────────────
 
 router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -72,6 +79,31 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => 
     }
     const wallet = await walletService.createWallet(userId, body.currency);
     res.status(201).json(wallet);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /v1/wallets/transfer ──────────────────────────────────────────────
+
+router.post('/transfer', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = TransferSchema.parse(req.body);
+    const fromWallet = await walletService.getWallet(body.from_wallet_id);
+
+    if (req.user?.role !== 'admin' && fromWallet.user_id !== req.user?.userId) {
+      res.status(403).json({ error: 'Forbidden', message: 'Cannot transfer from another user wallet' });
+      return;
+    }
+
+    const result = await walletService.transfer(
+      body.from_wallet_id,
+      body.to_wallet_id,
+      body.amount,
+      body.metadata
+    );
+
+    res.status(201).json(result);
   } catch (err) {
     next(err);
   }

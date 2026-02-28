@@ -11,8 +11,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/src/database/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
       - ./backend/src/database/migrations/002_additional_tables.sql:/docker-entrypoint-initdb.d/002_additional_tables.sql
+      - ./backend/src/database/migrations/002_settlement_production_hardening.sql:/docker-entrypoint-initdb.d/002_settlement_production_hardening.sql
       - ./backend/src/database/migrations/003_liquidity_providers.sql:/docker-entrypoint-initdb.d/003_liquidity_providers.sql
+      - ./backend/src/database/migrations/003_seed_test_accounts.sql:/docker-entrypoint-initdb.d/003_seed_test_accounts.sql
       - ./backend/src/database/migrations/004_webhooks.sql:/docker-entrypoint-initdb.d/004_webhooks.sql
+      - ./backend/src/database/migrations/004_seed_demo_liquidity.sql:/docker-entrypoint-initdb.d/004_seed_demo_liquidity.sql
       - ./backend/src/database/migrations/005_collection_accounts.sql:/docker-entrypoint-initdb.d/005_collection_accounts.sql
       - ./backend/src/database/migrations/006_user_account_type.sql:/docker-entrypoint-initdb.d/006_user_account_type.sql
       - ./backend/src/database/migrations/007_founding_partner.sql:/docker-entrypoint-initdb.d/007_founding_partner.sql
@@ -54,6 +57,7 @@ services:
       DATABASE_URL: postgresql://wgi_user:wgi_pass@postgres:5432/wgi_db
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-super-secret-key}
+      SETTLEMENT_WEBHOOK_SECRET: ${SETTLEMENT_WEBHOOK_SECRET:-change-me-in-production-webhook-secret}
       JWT_EXPIRY: 3600
       OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID:-wgi-client}
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:-wgi-client-secret}

@@ -86,9 +86,12 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-bootstrap().catch((err) => {
-  console.error('[WGI] Fatal startup error:', err);
-  process.exit(1);
-});
+// Don't start the server when imported in test environment
+if (config.nodeEnv !== 'test') {
+  bootstrap().catch((err) => {
+    console.error('[WGI] Fatal startup error:', err);
+    process.exit(1);
+  });
+}
 
 export default app;

@@ -56,6 +56,9 @@ import { pool, redis } from '../database';
 const mockPool = pool as jest.Mocked<typeof pool>;
 const mockRedis = redis as jest.Mocked<typeof redis>;
 
+// Must match the fallback in config.ts so tokens signed here are accepted by the middleware.
+// When JWT_SECRET is not set, both config.ts and this file fall back to the same dev-only
+// string — this is intentional for the test environment only.
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-jwt-secret-do-not-use-in-production';
 
 function makeToken(

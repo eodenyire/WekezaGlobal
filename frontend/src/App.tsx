@@ -20,6 +20,10 @@ import Notifications from './pages/Notifications';
 import Webhooks from './pages/Webhooks';
 import CollectionAccounts from './pages/CollectionAccounts';
 import Subscriptions from './pages/Subscriptions';
+import DeveloperPortal   from './pages/DeveloperPortal';
+import SandboxTesting    from './pages/SandboxTesting';
+import DeveloperAnalytics from './pages/DeveloperAnalytics';
+import Changelog         from './pages/Changelog';
 
 import './styles/global.css';
 
@@ -54,6 +58,10 @@ const App: React.FC = () => (
           <Route path="collection-accounts" element={<CollectionAccounts />} />
           <Route path="notifications"  element={<Notifications />} />
           <Route path="subscriptions"  element={<Subscriptions />} />
+          <Route path="developer"      element={<DeveloperPortal />} />
+          <Route path="sandbox"        element={<SandboxTesting />} />
+          <Route path="developer/analytics" element={<DeveloperAnalytics />} />
+          <Route path="developer/changelog" element={<Changelog />} />
           <Route
             path="admin"
             element={

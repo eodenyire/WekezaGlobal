@@ -25,6 +25,7 @@ services:
       - ./backend/src/database/migrations/011_transaction_limits.sql:/docker-entrypoint-initdb.d/011_transaction_limits.sql
       - ./backend/src/database/migrations/012_seed_comprehensive.sql:/docker-entrypoint-initdb.d/012_seed_comprehensive.sql
       - ./backend/src/database/migrations/013_api_key_scopes.sql:/docker-entrypoint-initdb.d/013_api_key_scopes.sql
+      - ./backend/src/database/migrations/014_developer_analytics.sql:/docker-entrypoint-initdb.d/014_developer_analytics.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -63,6 +64,12 @@ services:
       JWT_EXPIRY: 3600
       OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID:-wgi-client}
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:-wgi-client-secret}
+      WEKEZA_CORE_URL: ${WEKEZA_CORE_URL:-http://localhost:5001}
+      WEKEZA_CORE_ENABLED: ${WEKEZA_CORE_ENABLED:-false}
+      WEKEZA_CORE_SERVICE_USER: ${WEKEZA_CORE_SERVICE_USER:-wgi-gateway}
+      WEKEZA_CORE_SERVICE_PASS: ${WEKEZA_CORE_SERVICE_PASS:-wgi-gateway-secret}
+      WEKEZA_CORE_TOKEN_TTL: ${WEKEZA_CORE_TOKEN_TTL:-3000}
+      WEKEZA_CORE_TIMEOUT_MS: ${WEKEZA_CORE_TIMEOUT_MS:-10000}
     ports:
       - "3001:3001"
     depends_on:

@@ -24,6 +24,8 @@ import sandboxRoutes    from './routes/sandbox';
 import collectionAccountRoutes from './routes/collectionAccounts';
 import subscriptionRoutes from './routes/subscriptions';
 import coreBankingRoutes  from './routes/coreBanking';
+import developerRoutes    from './routes/developer';
+import partnerRoutes      from './routes/partner';
 
 const app = express();
 
@@ -67,6 +69,8 @@ app.use('/v1/sandbox',        sandboxRoutes);
 app.use('/v1/collection-accounts', collectionAccountRoutes);
 app.use('/v1/subscriptions', subscriptionRoutes);
 app.use('/v1/core-banking',  coreBankingRoutes);
+app.use('/v1/developer',    developerRoutes);
+app.use('/v1/partner',      partnerRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

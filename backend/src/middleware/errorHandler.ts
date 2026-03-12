@@ -1,25 +1,34 @@
 import { Request, Response, NextFunction } from 'express';
+import { ZodError } from 'zod';
 
 export interface AppError extends Error {
   statusCode?: number;
 }
 
 export function errorHandler(
-  err: AppError,
+  err: AppError | ZodError,
   _req: Request,
   res: Response,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: NextFunction
 ): void {
-  const statusCode = err.statusCode ?? 500;
-  const message = err.message || 'An unexpected error occurred';
+  // Handle Zod validation errors as 400 Bad Request
+  if (err instanceof ZodError) {
+    const message = err.errors.map((e) => e.message).join(', ');
+    res.status(400).json({ error: 'BadRequest', message });
+    return;
+  }
+
+  const appErr = err as AppError;
+  const statusCode = appErr.statusCode ?? 500;
+  const message = appErr.message || 'An unexpected error occurred';
 
   if (statusCode >= 500) {
     console.error('[Error]', err);
   }
 
   res.status(statusCode).json({
-    error: statusCode === 500 ? 'InternalServerError' : err.name || 'Error',
+    error: statusCode === 500 ? 'InternalServerError' : appErr.name || 'Error',
     message,
   });
 }

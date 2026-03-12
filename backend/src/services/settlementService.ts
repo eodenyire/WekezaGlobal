@@ -2,10 +2,28 @@ import { pool } from '../database';
 import { findWalletById } from '../models/wallet';
 import { Settlement, Bank } from '../models/types';
 import { createError } from '../middleware/errorHandler';
+import { config } from '../config';
 import { deposit, withdraw } from './walletService';
 
 function generateProviderReference(bankId: string): string {
   return `SETTLE-${bankId.slice(0, 8)}-${Date.now()}`;
+}
+
+/**
+ * Resolves the status of a settlement by checking if it has exceeded the
+ * completion window (config.settlementCompletionMs).  Pending settlements
+ * that have been waiting longer than the configured window are considered
+ * completed.  This is an in-memory check — callers must persist the change
+ * separately when needed.
+ */
+function resolveStatus(settlement: Settlement): Settlement {
+  if (settlement.status === 'pending') {
+    const elapsed = Date.now() - new Date(settlement.updated_at).getTime();
+    if (elapsed >= config.settlementCompletionMs) {
+      return { ...settlement, status: 'completed' };
+    }
+  }
+  return settlement;
 }
 
 export interface InitiateSettlementOptions {
@@ -107,7 +125,25 @@ export async function getSettlement(settlementId: string): Promise<Settlement> {
     [settlementId]
   );
   if (!rows[0]) throw createError('Settlement not found', 404);
-  return rows[0];
+
+  const resolved = resolveStatus(rows[0]);
+
+  // Persist auto-completion to DB when the timeout window has elapsed
+  if (resolved.status === 'completed' && rows[0].status !== 'completed') {
+    await pool.query(
+      `UPDATE settlements
+       SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+       WHERE settlement_id = $1`,
+      [settlementId]
+    );
+    await pool.query(
+      `INSERT INTO reconciliation_logs (settlement_id, result, notes)
+       VALUES ($1, 'completed', 'Auto-completed by timeout')`,
+      [settlementId]
+    );
+  }
+
+  return resolved;
 }
 
 export async function getWalletSettlements(walletId: string): Promise<Settlement[]> {
@@ -118,7 +154,7 @@ export async function getWalletSettlements(walletId: string): Promise<Settlement
     'SELECT * FROM settlements WHERE wallet_id = $1 ORDER BY created_at DESC',
     [walletId]
   );
-  return rows;
+  return rows.map(resolveStatus);
 }
 
 export async function getUserSettlements(userId: string): Promise<Settlement[]> {

@@ -185,7 +185,7 @@ router.post('/:wallet_id/withdraw', async (req: AuthRequest, res: Response, next
   }
 });
 
-const TransferSchema = z.object({
+const WalletTransferSchema = z.object({
   destination_wallet_id: z.string().uuid(),
   amount:                z.number().positive(),
   metadata:              z.record(z.unknown()).optional(),
@@ -195,7 +195,7 @@ const TransferSchema = z.object({
 
 router.post('/:wallet_id/transfer', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const body = TransferSchema.parse(req.body);
+    const body = WalletTransferSchema.parse(req.body);
     const result = await walletService.transfer(
       req.params.wallet_id,
       body.destination_wallet_id,

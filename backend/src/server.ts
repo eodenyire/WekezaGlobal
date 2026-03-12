@@ -23,6 +23,7 @@ import webhookRoutes    from './routes/webhooks';
 import sandboxRoutes    from './routes/sandbox';
 import collectionAccountRoutes from './routes/collectionAccounts';
 import subscriptionRoutes from './routes/subscriptions';
+import coreBankingRoutes  from './routes/coreBanking';
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use('/v1/webhooks',       webhookRoutes);
 app.use('/v1/sandbox',        sandboxRoutes);
 app.use('/v1/collection-accounts', collectionAccountRoutes);
 app.use('/v1/subscriptions', subscriptionRoutes);
+app.use('/v1/core-banking',  coreBankingRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
@@ -86,9 +88,12 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-bootstrap().catch((err) => {
-  console.error('[WGI] Fatal startup error:', err);
-  process.exit(1);
-});
+// Don't start the server when imported in test environment
+if (config.nodeEnv !== 'test') {
+  bootstrap().catch((err) => {
+    console.error('[WGI] Fatal startup error:', err);
+    process.exit(1);
+  });
+}
 
 export default app;

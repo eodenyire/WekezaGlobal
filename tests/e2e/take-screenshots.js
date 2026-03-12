@@ -24,10 +24,10 @@ const BASE_URL = process.argv[2] || 'http://localhost:3000';
 const API_URL  = process.argv[3] || 'http://localhost:3001';
 const SCREENSHOTS_DIR = path.join(__dirname, '../../screenshots/developer-ecosystem');
 
-const TIMESTAMP = Date.now();
-const TEST_EMAIL    = `e2e-screenshot-${TIMESTAMP}@fintech-test.io`;
+const TIMESTAMP_MS = Date.now();
+const TEST_EMAIL    = `e2e-screenshot-${TIMESTAMP_MS}@fintech-test.io`;
 const TEST_PASSWORD = 'E2eTest@Pass123';
-const TEST_NAME     = `Screenshot Developer ${TIMESTAMP}`;
+const TEST_NAME     = `Screenshot Developer ${TIMESTAMP_MS}`;
 
 async function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

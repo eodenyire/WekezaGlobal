@@ -40,7 +40,7 @@ TEST_EMAIL="e2e-dev-${TIMESTAMP}@fintech-test.io"
 TEST_PASSWORD="E2eTest@Pass123"
 TEST_NAME="E2E Developer ${TIMESTAMP}"
 
-# Colour output
+# Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

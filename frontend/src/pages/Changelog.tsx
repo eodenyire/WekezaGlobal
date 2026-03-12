@@ -38,7 +38,11 @@ const Changelog: React.FC = () => {
     apiClient
       .get<{ changelog: ChangelogEntry[] }>('/v1/developer/changelog')
       .then((r) => setChangelog(r.data.changelog ?? []))
-      .catch(() => setError('Failed to load changelog.'))
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Failed to load changelog.';
+        setError(msg);
+        if (process.env.NODE_ENV === 'development') console.error('[Changelog]', msg);
+      })
       .finally(() => setLoading(false));
   }, []);
 

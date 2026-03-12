@@ -313,4 +313,289 @@ router.get('/integrations/wise/transfer/:transfer_id', (req: Request, res: Respo
   });
 });
 
+// ─── Core Banking Sandbox — github.com/eodenyire/Wekeza/APIs/v1-Core ─────────
+//
+// These endpoints mirror the Wekeza v1-Core banking system API surface so that
+// external developers can build and test their integrations without needing a
+// live v1-Core deployment.  Every response carries sandbox: true and
+// core_banking: true to distinguish it from production.
+//
+// Production routes (require v1-Core running):
+//   GET/POST /v1/core-banking/accounts/*
+//   POST     /v1/core-banking/transactions/*
+//   POST     /v1/core-banking/loans/*
+//   POST     /v1/core-banking/cards/*
+//   POST     /v1/core-banking/payments/*
+
+// Demo account numbers used consistently across all sandbox responses
+const SANDBOX_ACCT_1 = 'WKZ-0001-2024';
+const SANDBOX_ACCT_2 = 'WKZ-0002-2024';
+
+// ── Accounts ──────────────────────────────────────────────────────────────────
+
+router.get('/core-banking/accounts', (_req: Request, res: Response) => {
+  res.json({
+    sandbox: true,
+    core_banking: true,
+    data: [
+      {
+        id: uuidv4(),
+        accountNumber: SANDBOX_ACCT_1,
+        accountType: 'Savings',
+        balance: 85000.00,
+        currency: 'KES',
+        status: 'Active',
+        createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
+      },
+      {
+        id: uuidv4(),
+        accountNumber: SANDBOX_ACCT_2,
+        accountType: 'Business',
+        balance: 250000.00,
+        currency: 'KES',
+        status: 'Active',
+        createdAt: new Date(Date.now() - 86400000 * 90).toISOString(),
+      },
+    ],
+    pagination: { pageNumber: 1, pageSize: 20, totalRecords: 2, totalPages: 1 },
+  });
+});
+
+router.get('/core-banking/accounts/:accountNumber', (req: Request, res: Response) => {
+  res.json({
+    sandbox: true,
+    core_banking: true,
+    id: uuidv4(),
+    accountNumber: req.params.accountNumber,
+    accountType: 'Savings',
+    balance: 85000.00,
+    currency: 'KES',
+    status: 'Active',
+    ownerName: 'Sandbox Account Holder',
+    createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
+  });
+});
+
+router.post('/core-banking/accounts/open', (req: Request, res: Response) => {
+  const { account_type, currency } = req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    core_banking: true,
+    accountId: uuidv4(),
+    accountNumber: `WKZ-${Math.floor(Math.random() * 9000) + 1000}-SAND`,
+    accountType: account_type ?? 'Savings',
+    currency: currency ?? 'KES',
+    status: 'Active',
+    createdAt: new Date().toISOString(),
+  });
+});
+
+router.get('/core-banking/accounts/:accountNumber/balance', (req: Request, res: Response) => {
+  res.json({
+    sandbox: true,
+    core_banking: true,
+    accountNumber: req.params.accountNumber,
+    currency: 'KES',
+    availableBalance: 85000.00,
+    currentBalance: 85000.00,
+    lastUpdated: new Date().toISOString(),
+  });
+});
+
+router.get('/core-banking/accounts/:accountNumber/statement', (req: Request, res: Response) => {
+  const from = (req.query.from as string) ?? new Date(Date.now() - 2592000000).toISOString().split('T')[0];
+  const to   = (req.query.to   as string) ?? new Date().toISOString().split('T')[0];
+  res.json({
+    sandbox: true,
+    core_banking: true,
+    accountNumber: req.params.accountNumber,
+    currency: 'KES',
+    openingBalance: 80000.00,
+    closingBalance: 85000.00,
+    fromDate: from,
+    toDate: to,
+    pageNumber: 1,
+    totalPages: 1,
+    entries: [
+      {
+        transactionId: uuidv4(),
+        date: new Date(Date.now() - 86400000 * 3).toISOString(),
+        type: 'Credit',
+        amount: 10000.00,
+        currency: 'KES',
+        runningBalance: 85000.00,
+        narration: 'Salary credit',
+        reference: 'SAL-SANDBOX-001',
+      },
+      {
+        transactionId: uuidv4(),
+        date: new Date(Date.now() - 86400000 * 7).toISOString(),
+        type: 'Debit',
+        amount: 5000.00,
+        currency: 'KES',
+        runningBalance: 75000.00,
+        narration: 'ATM withdrawal',
+        reference: 'ATM-SANDBOX-002',
+      },
+    ],
+  });
+});
+
+// ── Transactions ──────────────────────────────────────────────────────────────
+
+router.post('/core-banking/transactions/transfer', (req: Request, res: Response) => {
+  const { source_account_number, destination_account_number, amount, currency } =
+    req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    core_banking: true,
+    transactionId: uuidv4(),
+    reference: `TRF-SAND-${Date.now()}`,
+    status: 'Completed',
+    amount: parseFloat(amount) || 1000,
+    currency: currency ?? 'KES',
+    sourceAccount: source_account_number ?? SANDBOX_ACCT_1,
+    destinationAccount: destination_account_number ?? SANDBOX_ACCT_2,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+router.post('/core-banking/transactions/deposit', (req: Request, res: Response) => {
+  const { account_number, amount, currency, mobile_number, provider } =
+    req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    core_banking: true,
+    transactionId: uuidv4(),
+    checkoutRequestId: `SAND-${uuidv4().split('-')[0].toUpperCase()}`,
+    status: 'Pending',
+    amount: parseFloat(amount) || 500,
+    currency: currency ?? 'KES',
+    accountNumber: account_number ?? SANDBOX_ACCT_1,
+    mobileNumber: mobile_number ?? '+254700000001',
+    provider: provider ?? 'MPESA',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ── Loans ─────────────────────────────────────────────────────────────────────
+
+router.post('/core-banking/loans/apply', (req: Request, res: Response) => {
+  const { loan_type, requested_amount, currency, tenure_months } =
+    req.body as Record<string, string>;
+  const principal = parseFloat(requested_amount) || 50000;
+  res.status(201).json({
+    sandbox: true,
+    core_banking: true,
+    loanId: uuidv4(),
+    loanNumber: `LN-SAND-${Math.floor(Math.random() * 90000) + 10000}`,
+    status: 'Approved',
+    requestedAmount: principal,
+    approvedAmount: principal,
+    currency: currency ?? 'KES',
+    tenureMonths: parseInt(tenure_months) || 12,
+    interestRate: 13.5,
+    monthlyInstalment: parseFloat((principal / (parseInt(tenure_months) || 12) * 1.135).toFixed(2)),
+    creditScore: 720,
+    message: 'Loan application approved. Pending disbursement.',
+    createdAt: new Date().toISOString(),
+    loanType: loan_type ?? 'Personal',
+  });
+});
+
+router.get('/core-banking/loans/:loanId', (req: Request, res: Response) => {
+  res.json({
+    sandbox: true,
+    core_banking: true,
+    loanId: req.params.loanId,
+    loanNumber: `LN-SAND-12345`,
+    accountNumber: SANDBOX_ACCT_1,
+    loanType: 'Personal',
+    status: 'Active',
+    principalAmount: 50000.00,
+    outstandingBalance: 42000.00,
+    currency: 'KES',
+    interestRate: 13.5,
+    tenureMonths: 12,
+    disbursedAt: new Date(Date.now() - 86400000 * 60).toISOString(),
+    nextPaymentDate: new Date(Date.now() + 86400000 * 10).toISOString(),
+    nextPaymentAmount: 4729.17,
+  });
+});
+
+router.post('/core-banking/loans/:loanId/repay', (req: Request, res: Response) => {
+  const { amount, currency } = req.body as Record<string, string>;
+  const paid = parseFloat(amount) || 4729.17;
+  res.status(201).json({
+    sandbox: true,
+    core_banking: true,
+    transactionId: uuidv4(),
+    loanId: req.params.loanId,
+    amountPaid: paid,
+    principalPaid: parseFloat((paid * 0.85).toFixed(2)),
+    interestPaid: parseFloat((paid * 0.15).toFixed(2)),
+    outstandingBalance: parseFloat((42000 - paid * 0.85).toFixed(2)),
+    currency: currency ?? 'KES',
+    status: 'Completed',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ── Cards ──────────────────────────────────────────────────────────────────────
+
+router.post('/core-banking/cards/issue', (req: Request, res: Response) => {
+  const { card_type, cardholder_name, currency } = req.body as Record<string, string>;
+  const last4 = String(Math.floor(Math.random() * 9000) + 1000);
+  res.status(201).json({
+    sandbox: true,
+    core_banking: true,
+    cardId: uuidv4(),
+    cardNumber: `****-****-****-${last4}`,
+    cardType: card_type ?? 'Debit',
+    accountNumber: SANDBOX_ACCT_1,
+    cardholderName: cardholder_name ?? 'SANDBOX HOLDER',
+    expiryDate: `${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear() + 3}`,
+    status: 'Active',
+    dailyWithdrawalLimit: 50000,
+    currency: currency ?? 'KES',
+    issuedAt: new Date().toISOString(),
+  });
+});
+
+// ── Payments ──────────────────────────────────────────────────────────────────
+
+router.post('/core-banking/payments/transfer', (req: Request, res: Response) => {
+  const { amount, currency, payment_rail, beneficiary_account, beneficiary_bank } =
+    req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    core_banking: true,
+    paymentId: uuidv4(),
+    reference: `PMT-SAND-${Date.now()}`,
+    status: 'Accepted',
+    amount: parseFloat(amount) || 1000,
+    currency: currency ?? 'KES',
+    paymentRail: payment_rail ?? 'RTGS',
+    beneficiaryAccount: beneficiary_account ?? 'BENE-ACCT-SANDBOX',
+    beneficiaryBank: beneficiary_bank ?? 'Sandbox Bank Kenya',
+    timestamp: new Date().toISOString(),
+    estimatedSettlement: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+  });
+});
+
+router.post('/core-banking/payments/mpesa/stk-push', (req: Request, res: Response) => {
+  const { phone_number, amount, reference } = req.body as Record<string, string>;
+  res.status(201).json({
+    sandbox: true,
+    core_banking: true,
+    checkoutRequestId: `ws_CO_${Date.now()}`,
+    merchantRequestId: `SAND-${uuidv4().split('-')[0].toUpperCase()}`,
+    responseCode: '0',
+    responseDescription: 'Success. Request accepted for processing',
+    customerMessage: `Please enter your M-Pesa PIN to complete payment of KES ${amount ?? '500'} to ${reference ?? 'WGI-SANDBOX'}.`,
+    phoneNumber: phone_number ?? '+254700000001',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 export default router;

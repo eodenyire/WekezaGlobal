@@ -540,3 +540,229 @@ function verifyWebhookSignature(payload, signature, secret) {
 ```
 
 The signature is delivered in the `X-WGI-Signature` request header.
+
+---
+
+## Wekeza v1-Core Banking System Integration
+
+WekezaGlobal acts as an API **gateway** between your application and the Wekeza v1-Core core banking system (source: [github.com/eodenyire/Wekeza/APIs/v1-Core](https://github.com/eodenyire/Wekeza/tree/main/APIs/v1-Core)).
+
+### What is v1-Core?
+
+Wekeza v1-Core is a .NET 8 core banking system that provides:
+- **Account Management** — open, freeze, close accounts; CIF (Customer Information File)
+- **Transactions** — internal transfers, M-Pesa STK push / callbacks, cheque clearing
+- **Loans** — origination, credit scoring, approval workflow, disbursement, repayment
+- **Cards** — debit/credit/prepaid issuance, ATM withdrawals, card controls
+- **Payments** — SWIFT, SEPA, ACH, RTGS cross-border payment rails
+- **Compliance** — AML/KYC workflows, risk assessment, audit trails
+- **General Ledger** — double-entry bookkeeping, COA management, GL postings
+
+### API Gateway Pattern
+
+```
+Your Application
+     │
+     │  X-API-Key: wgi_...
+     ▼
+WekezaGlobal (WGI)           ← You are here
+  /v1/core-banking/*         ← Live routes (proxy to v1-Core)
+  /v1/sandbox/core-banking/* ← Sandbox routes (mock responses)
+     │
+     │  Bearer <service-jwt>
+     ▼
+Wekeza v1-Core (.NET 8)      ← github.com/eodenyire/Wekeza/APIs/v1-Core
+  /api/accounts/*
+  /api/transactions/*
+  /api/loans/*
+  /api/cards/*
+  /api/payments/*
+```
+
+WGI handles:
+- **API key validation & rate limiting** — your key is checked before any request reaches v1-Core
+- **Service token management** — WGI authenticates to v1-Core as a service account and caches the JWT in Redis
+- **Request translation** — WGI converts WGI-style JSON → v1-Core .NET request shapes
+- **Error normalisation** — 404/400/5xx from v1-Core are translated into standard WGI error JSON
+
+### Live Routes (`/v1/core-banking/*`)
+
+These proxy to a running v1-Core instance. Enable by setting `WEKEZA_CORE_ENABLED=true` and `WEKEZA_CORE_URL=http://<v1-core-host>:5001`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/v1/core-banking/health` | Check v1-Core connectivity |
+| `GET`  | `/v1/core-banking/accounts` | List accounts (paginated) |
+| `GET`  | `/v1/core-banking/accounts/:accountNumber` | Get account details |
+| `POST` | `/v1/core-banking/accounts/open` | Open a new account |
+| `GET`  | `/v1/core-banking/accounts/:accountNumber/balance` | Get account balance |
+| `GET`  | `/v1/core-banking/accounts/:accountNumber/statement` | Get account statement |
+| `POST` | `/v1/core-banking/transactions/transfer` | Transfer between accounts |
+| `POST` | `/v1/core-banking/transactions/deposit` | M-Pesa / mobile deposit |
+| `POST` | `/v1/core-banking/loans/apply` | Apply for a loan |
+| `GET`  | `/v1/core-banking/loans/:loanId` | Get loan details + schedule |
+| `POST` | `/v1/core-banking/loans/:loanId/repay` | Make a loan repayment |
+| `POST` | `/v1/core-banking/cards/issue` | Issue a debit/credit/prepaid card |
+| `POST` | `/v1/core-banking/payments/transfer` | Cross-bank payment (SWIFT/SEPA/ACH/RTGS) |
+| `POST` | `/v1/core-banking/payments/mpesa/stk-push` | Trigger M-Pesa STK push |
+
+### Sandbox Routes (`/v1/sandbox/core-banking/*`)
+
+Use these during development — no live v1-Core instance required. All responses include `"sandbox": true` and `"core_banking": true`.
+
+| Method | Path |
+|--------|------|
+| `GET`  | `/v1/sandbox/core-banking/accounts` |
+| `GET`  | `/v1/sandbox/core-banking/accounts/:accountNumber` |
+| `POST` | `/v1/sandbox/core-banking/accounts/open` |
+| `GET`  | `/v1/sandbox/core-banking/accounts/:accountNumber/balance` |
+| `GET`  | `/v1/sandbox/core-banking/accounts/:accountNumber/statement` |
+| `POST` | `/v1/sandbox/core-banking/transactions/transfer` |
+| `POST` | `/v1/sandbox/core-banking/transactions/deposit` |
+| `POST` | `/v1/sandbox/core-banking/loans/apply` |
+| `GET`  | `/v1/sandbox/core-banking/loans/:loanId` |
+| `POST` | `/v1/sandbox/core-banking/loans/:loanId/repay` |
+| `POST` | `/v1/sandbox/core-banking/cards/issue` |
+| `POST` | `/v1/sandbox/core-banking/payments/transfer` |
+| `POST` | `/v1/sandbox/core-banking/payments/mpesa/stk-push` |
+
+### Code Examples
+
+#### Open a new bank account (sandbox)
+
+```bash
+curl -X POST http://localhost:3001/v1/sandbox/core-banking/accounts/open \
+  -H "X-API-Key: wgi_sandbox_dev1_key_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "full_name": "Jane Doe",
+    "identification_number": "ID-123456",
+    "email": "jane@example.com",
+    "phone_number": "+254700000099",
+    "account_type": "Savings",
+    "currency": "KES",
+    "initial_deposit": 5000
+  }'
+```
+
+**Response:**
+```json
+{
+  "sandbox": true,
+  "core_banking": true,
+  "accountId": "uuid",
+  "accountNumber": "WKZ-4271-SAND",
+  "accountType": "Savings",
+  "currency": "KES",
+  "status": "Active",
+  "createdAt": "2025-03-12T10:00:00.000Z"
+}
+```
+
+#### Apply for a loan (sandbox)
+
+```bash
+curl -X POST http://localhost:3001/v1/sandbox/core-banking/loans/apply \
+  -H "X-API-Key: wgi_sandbox_dev1_key_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_number": "WKZ-0001-2024",
+    "loan_type": "Personal",
+    "requested_amount": 100000,
+    "currency": "KES",
+    "tenure_months": 24,
+    "purpose": "Business expansion"
+  }'
+```
+
+**Response:**
+```json
+{
+  "sandbox": true,
+  "core_banking": true,
+  "loanId": "uuid",
+  "loanNumber": "LN-SAND-12345",
+  "status": "Approved",
+  "requestedAmount": 100000,
+  "approvedAmount": 100000,
+  "currency": "KES",
+  "tenureMonths": 24,
+  "interestRate": 13.5,
+  "monthlyInstalment": 5052.08,
+  "creditScore": 720,
+  "message": "Loan application approved. Pending disbursement."
+}
+```
+
+#### M-Pesa STK Push (sandbox)
+
+```bash
+curl -X POST http://localhost:3001/v1/sandbox/core-banking/payments/mpesa/stk-push \
+  -H "X-API-Key: wgi_sandbox_dev1_key_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_number": "WKZ-0001-2024",
+    "phone_number": "+254700000001",
+    "amount": 2500,
+    "reference": "INV-2025-001",
+    "description": "School fees payment"
+  }'
+```
+
+**Response:**
+```json
+{
+  "sandbox": true,
+  "core_banking": true,
+  "checkoutRequestId": "ws_CO_1741773600000",
+  "merchantRequestId": "SAND-ABC12345",
+  "responseCode": "0",
+  "responseDescription": "Success. Request accepted for processing",
+  "customerMessage": "Please enter your M-Pesa PIN to complete payment of KES 2500 to INV-2025-001."
+}
+```
+
+### Running v1-Core Locally
+
+To use the live `/v1/core-banking/*` routes you need a running v1-Core instance:
+
+```bash
+# Clone the Wekeza repo
+git clone https://github.com/eodenyire/Wekeza.git
+cd Wekeza/APIs/v1-Core
+
+# Start with Docker
+docker compose up -d
+
+# Or run manually (.NET 8 SDK required)
+dotnet run --project Wekeza.Core.Api
+
+# Default URL: http://localhost:5001
+# Swagger UI: http://localhost:5001/swagger
+```
+
+Then in WGI `.env`:
+```env
+WEKEZA_CORE_ENABLED=true
+WEKEZA_CORE_URL=http://localhost:5001
+WEKEZA_CORE_SERVICE_USER=admin          # Or a dedicated service account
+WEKEZA_CORE_SERVICE_PASS=your-password
+```
+
+### API Key Scopes
+
+API keys have a `scopes` array that controls which v1-Core features a developer can access:
+
+| Scope | Routes unlocked |
+|-------|----------------|
+| `core_banking` | `/v1/core-banking/*` |
+| `fx` | `/v1/fx/*` |
+| `payments` | `/v1/core-banking/payments/*` |
+| `lending` | `/v1/core-banking/loans/*` |
+| `cards` | `/v1/core-banking/cards/*` |
+| `compliance` | `/v1/kyc/*`, `/v1/aml/*` |
+| `reporting` | `/v1/core-banking/accounts/*/statement` |
+| `webhooks` | `/v1/webhooks/*` |
+
+Sandbox API keys (`wgi_sandbox_dev1_key_abc123` / `wgi_sandbox_dev2_key_def456`) are seeded with all scopes.
+

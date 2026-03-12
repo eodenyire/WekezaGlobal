@@ -53,4 +53,35 @@ export const config = {
     process.env.RATE_LIMIT_MAX_REQUESTS || '100',
     10
   ),
+
+  // ── Wekeza v1-Core banking system integration ─────────────────────────────
+  // WekezaGlobal acts as an API gateway that proxies authorized external-developer
+  // requests to the Wekeza v1-Core .NET banking system.
+  //
+  // WEKEZA_CORE_URL          Base URL of the v1-Core API (e.g. http://core:5001)
+  // WEKEZA_CORE_ENABLED      Set to 'false' to disable the proxy (sandbox-only mode)
+  // WEKEZA_CORE_SERVICE_USER / _PASS  Service-account credentials WGI uses to obtain
+  //                          a v1-Core JWT on behalf of every gateway request.
+  // WEKEZA_CORE_TOKEN_TTL    How many seconds before WGI refreshes its service token.
+  coreBankingUrl: process.env.WEKEZA_CORE_URL || 'http://localhost:5001',
+  coreBankingEnabled: process.env.WEKEZA_CORE_ENABLED !== 'false',
+  coreBankingServiceUser: process.env.WEKEZA_CORE_SERVICE_USER || 'wgi-gateway',
+  coreBankingServicePass: (() => {
+    const p = process.env.WEKEZA_CORE_SERVICE_PASS;
+    if (!p && process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'WEKEZA_CORE_SERVICE_PASS must be set in production (service account for v1-Core)'
+      );
+    }
+    return p || 'dev-only-gateway-pass';
+  })(),
+  coreBankingTokenTtlSec: parseInt(
+    process.env.WEKEZA_CORE_TOKEN_TTL || '3000', // refresh 10 min before JWT expires (1h default)
+    10
+  ),
+  // Request timeout for v1-Core HTTP calls (ms)
+  coreBankingTimeoutMs: parseInt(
+    process.env.WEKEZA_CORE_TIMEOUT_MS || '10000',
+    10
+  ),
 } as const;

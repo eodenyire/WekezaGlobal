@@ -402,6 +402,124 @@ See [`v1-core/README.md`](v1-core/README.md) for the full API reference.
 
 ---
 
+## Wekeza v1-Core Banking System Integration
+
+WekezaGlobal acts as an API gateway between external developers and the Wekeza v1-Core core banking system ([github.com/eodenyire/Wekeza/APIs/v1-Core](https://github.com/eodenyire/Wekeza/tree/main/APIs/v1-Core)).
+
+### Architecture
+
+```
+External Developer (API Key / JWT)
+         │
+         ▼
+WekezaGlobal (Node.js / Express)
+  /v1/core-banking/*         ← Live proxy routes
+  /v1/sandbox/core-banking/* ← Mock routes (no v1-Core needed)
+         │
+         │ Service JWT (cached in Redis)
+         ▼
+Wekeza v1-Core (.NET 8)
+  http://localhost:5001
+  /api/accounts/*, /api/transactions/*, /api/loans/*, /api/cards/*
+```
+
+### Step 1 — Start v1-Core
+
+```bash
+# Using Docker (recommended)
+git clone https://github.com/eodenyire/Wekeza.git
+cd Wekeza/APIs/v1-Core
+docker compose up -d
+
+# Or manually
+dotnet run --project Wekeza.Core.Api
+# Swagger UI: http://localhost:5001/swagger
+```
+
+### Step 2 — Configure WGI to connect to v1-Core
+
+In your `.env` file:
+
+```env
+WEKEZA_CORE_ENABLED=true
+WEKEZA_CORE_URL=http://localhost:5001
+WEKEZA_CORE_SERVICE_USER=admin
+WEKEZA_CORE_SERVICE_PASS=your-v1-core-admin-password
+WEKEZA_CORE_TOKEN_TTL=3000
+WEKEZA_CORE_TIMEOUT_MS=10000
+```
+
+### Step 3 — Verify connectivity
+
+```bash
+# Check WGI can reach v1-Core (API key or JWT required)
+curl http://localhost:3001/v1/core-banking/health \
+  -H "X-API-Key: wgi_sandbox_dev1_key_abc123"
+
+# Expected (v1-Core running):
+# { "status": "ok", "message": "WekezaGlobal is connected to Wekeza v1-Core.", ... }
+
+# Expected (v1-Core disabled):
+# { "status": "disabled", "message": "Core banking integration is disabled..." }
+```
+
+### Step 4 — Call core banking APIs
+
+```bash
+# Open a new bank account
+curl -X POST http://localhost:3001/v1/core-banking/accounts/open \
+  -H "X-API-Key: wgi_sandbox_dev1_key_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "full_name": "Jane Doe",
+    "identification_number": "ID-123456",
+    "email": "jane@example.com",
+    "phone_number": "+254700000099",
+    "account_type": "Savings",
+    "currency": "KES",
+    "initial_deposit": 5000
+  }'
+
+# Apply for a loan
+curl -X POST http://localhost:3001/v1/core-banking/loans/apply \
+  -H "X-API-Key: wgi_sandbox_dev1_key_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_number": "WKZ-0001-2024",
+    "loan_type": "Personal",
+    "requested_amount": 100000,
+    "currency": "KES",
+    "tenure_months": 24,
+    "purpose": "Business expansion"
+  }'
+
+# M-Pesa STK push
+curl -X POST http://localhost:3001/v1/core-banking/payments/mpesa/stk-push \
+  -H "X-API-Key: wgi_sandbox_dev1_key_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_number": "WKZ-0001-2024",
+    "phone_number": "+254700000001",
+    "amount": 2500,
+    "reference": "INV-2025-001"
+  }'
+```
+
+### Using Sandbox When v1-Core Is Unavailable
+
+All live `/v1/core-banking/*` routes have identical sandbox counterparts under `/v1/sandbox/core-banking/*` that return realistic mock responses without requiring a v1-Core instance.
+
+```bash
+# Sandbox version — same request shape, same response shape, no v1-Core needed
+curl -X POST http://localhost:3001/v1/sandbox/core-banking/loans/apply \
+  -H "X-API-Key: wgi_sandbox_dev1_key_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{ ... same body ... }'
+```
+
+---
+
+
 ## Troubleshooting
 
 ### Backend fails to start — `ECONNREFUSED` on PostgreSQL

@@ -1086,3 +1086,292 @@ describe('GET /metrics', () => {
     expect(res.text).toContain('http_requests_total');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core Banking — Sandbox endpoints (/v1/sandbox/core-banking/*)
+//
+// These mirror the Wekeza v1-Core API surface (github.com/eodenyire/Wekeza)
+// and require only an API key — no live v1-Core instance needed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CORE_API_KEY_ROW = {
+  rows: [{ api_key_id: 'key-1', user_id: 'user-1', email: 'partner@example.com', status: 'active' }],
+};
+
+describe('GET /v1/sandbox/core-banking/accounts', () => {
+  it('returns sandbox account list', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .get('/v1/sandbox/core-banking/accounts')
+      .set('X-API-Key', 'wgi_sandbox_testkey123');
+
+    expect(res.status).toBe(200);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.core_banking).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.pagination.totalRecords).toBe(2);
+  });
+});
+
+describe('GET /v1/sandbox/core-banking/accounts/:accountNumber', () => {
+  it('returns a single sandbox account', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .get('/v1/sandbox/core-banking/accounts/WKZ-0001-2024')
+      .set('X-API-Key', 'wgi_sandbox_testkey123');
+
+    expect(res.status).toBe(200);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.accountNumber).toBe('WKZ-0001-2024');
+  });
+});
+
+describe('POST /v1/sandbox/core-banking/accounts/open', () => {
+  it('creates a sandbox account', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .post('/v1/sandbox/core-banking/accounts/open')
+      .set('X-API-Key', 'wgi_sandbox_testkey123')
+      .send({
+        full_name: 'Test User',
+        account_type: 'Savings',
+        currency: 'KES',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.core_banking).toBe(true);
+    expect(res.body.accountNumber).toBeDefined();
+    expect(res.body.status).toBe('Active');
+  });
+});
+
+describe('GET /v1/sandbox/core-banking/accounts/:accountNumber/balance', () => {
+  it('returns sandbox account balance', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .get('/v1/sandbox/core-banking/accounts/WKZ-0001-2024/balance')
+      .set('X-API-Key', 'wgi_sandbox_testkey123');
+
+    expect(res.status).toBe(200);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.availableBalance).toBe(85000);
+    expect(res.body.currency).toBe('KES');
+  });
+});
+
+describe('GET /v1/sandbox/core-banking/accounts/:accountNumber/statement', () => {
+  it('returns sandbox account statement', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .get('/v1/sandbox/core-banking/accounts/WKZ-0001-2024/statement')
+      .query({ from: '2025-01-01', to: '2025-03-01' })
+      .set('X-API-Key', 'wgi_sandbox_testkey123');
+
+    expect(res.status).toBe(200);
+    expect(res.body.sandbox).toBe(true);
+    expect(Array.isArray(res.body.entries)).toBe(true);
+    expect(res.body.entries.length).toBeGreaterThan(0);
+  });
+});
+
+describe('POST /v1/sandbox/core-banking/transactions/transfer', () => {
+  it('returns sandbox transfer result', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .post('/v1/sandbox/core-banking/transactions/transfer')
+      .set('X-API-Key', 'wgi_sandbox_testkey123')
+      .send({
+        source_account_number: 'WKZ-0001-2024',
+        destination_account_number: 'WKZ-0002-2024',
+        amount: 5000,
+        currency: 'KES',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.status).toBe('Completed');
+    expect(res.body.transactionId).toBeDefined();
+  });
+});
+
+describe('POST /v1/sandbox/core-banking/transactions/deposit', () => {
+  it('returns sandbox M-Pesa deposit result', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .post('/v1/sandbox/core-banking/transactions/deposit')
+      .set('X-API-Key', 'wgi_sandbox_testkey123')
+      .send({
+        account_number: 'WKZ-0001-2024',
+        amount: 1000,
+        currency: 'KES',
+        mobile_number: '+254700000001',
+        provider: 'MPESA',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.provider).toBe('MPESA');
+  });
+});
+
+describe('POST /v1/sandbox/core-banking/loans/apply', () => {
+  it('returns an approved sandbox loan application', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .post('/v1/sandbox/core-banking/loans/apply')
+      .set('X-API-Key', 'wgi_sandbox_testkey123')
+      .send({
+        loan_type: 'Personal',
+        requested_amount: 50000,
+        currency: 'KES',
+        tenure_months: 12,
+        purpose: 'Business expansion',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.status).toBe('Approved');
+    expect(res.body.creditScore).toBe(720);
+  });
+});
+
+describe('GET /v1/sandbox/core-banking/loans/:loanId', () => {
+  it('returns sandbox loan details', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .get('/v1/sandbox/core-banking/loans/loan-uuid-sandbox')
+      .set('X-API-Key', 'wgi_sandbox_testkey123');
+
+    expect(res.status).toBe(200);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.loanId).toBe('loan-uuid-sandbox');
+    expect(res.body.status).toBe('Active');
+    expect(res.body.outstandingBalance).toBe(42000.00);
+  });
+});
+
+describe('POST /v1/sandbox/core-banking/loans/:loanId/repay', () => {
+  it('returns sandbox loan repayment result', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .post('/v1/sandbox/core-banking/loans/loan-uuid-sandbox/repay')
+      .set('X-API-Key', 'wgi_sandbox_testkey123')
+      .send({ amount: 4729.17, currency: 'KES' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.amountPaid).toBe(4729.17);
+    expect(res.body.status).toBe('Completed');
+  });
+});
+
+describe('POST /v1/sandbox/core-banking/cards/issue', () => {
+  it('issues a sandbox card', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .post('/v1/sandbox/core-banking/cards/issue')
+      .set('X-API-Key', 'wgi_sandbox_testkey123')
+      .send({
+        account_number: 'WKZ-0001-2024',
+        card_type: 'Debit',
+        cardholder_name: 'TEST HOLDER',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.status).toBe('Active');
+    expect(res.body.cardNumber).toMatch(/^\*{4}-\*{4}-\*{4}-\d{4}$/);
+  });
+});
+
+describe('POST /v1/sandbox/core-banking/payments/transfer', () => {
+  it('returns sandbox cross-bank payment result', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .post('/v1/sandbox/core-banking/payments/transfer')
+      .set('X-API-Key', 'wgi_sandbox_testkey123')
+      .send({
+        source_account_number: 'WKZ-0001-2024',
+        beneficiary_account: 'BENE-001',
+        beneficiary_bank: 'KCB',
+        amount: 10000,
+        currency: 'KES',
+        narration: 'Invoice settlement',
+        payment_rail: 'RTGS',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.status).toBe('Accepted');
+    expect(res.body.paymentRail).toBe('RTGS');
+  });
+});
+
+describe('POST /v1/sandbox/core-banking/payments/mpesa/stk-push', () => {
+  it('returns sandbox M-Pesa STK push result', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .post('/v1/sandbox/core-banking/payments/mpesa/stk-push')
+      .set('X-API-Key', 'wgi_sandbox_testkey123')
+      .send({
+        account_number: 'WKZ-0001-2024',
+        phone_number: '+254700000001',
+        amount: 500,
+        reference: 'INV-001',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.sandbox).toBe(true);
+    expect(res.body.responseCode).toBe('0');
+    expect(res.body.checkoutRequestId).toBeDefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core Banking — Live routes (/v1/core-banking/*)
+//
+// When core banking is disabled (WEKEZA_CORE_ENABLED=false, the default in test),
+// the live routes return 503 pointing to the sandbox.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /v1/core-banking/health (live route)', () => {
+  it('returns disabled/unreachable status — v1-Core not available in test env', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .get('/v1/core-banking/health')
+      .set('X-API-Key', 'wgi_sandbox_testkey123');
+
+    // When WEKEZA_CORE_ENABLED=false → 200 {status:'disabled'}
+    // When WEKEZA_CORE_ENABLED=true but v1-Core not running → 503 ECONNREFUSED
+    expect([200, 503]).toContain(res.status);
+  });
+});
+
+describe('GET /v1/core-banking/accounts (live route — v1-Core not running)', () => {
+  it('returns 503 when v1-Core is unreachable', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce(CORE_API_KEY_ROW);
+
+    const res = await request(app)
+      .get('/v1/core-banking/accounts')
+      .set('X-API-Key', 'wgi_sandbox_testkey123');
+
+    // 503 covers both: disabled (WEKEZA_CORE_ENABLED=false) and
+    // unreachable (ECONNREFUSED wrapped as 503 by coreBankingService)
+    expect(res.status).toBe(503);
+  });
+});

@@ -24,6 +24,7 @@ services:
       - ./backend/src/database/migrations/010_mfa_tokens.sql:/docker-entrypoint-initdb.d/010_mfa_tokens.sql
       - ./backend/src/database/migrations/011_transaction_limits.sql:/docker-entrypoint-initdb.d/011_transaction_limits.sql
       - ./backend/src/database/migrations/012_seed_comprehensive.sql:/docker-entrypoint-initdb.d/012_seed_comprehensive.sql
+      - ./backend/src/database/migrations/013_api_key_scopes.sql:/docker-entrypoint-initdb.d/013_api_key_scopes.sql
     ports:
       - "5432:5432"
     healthcheck:

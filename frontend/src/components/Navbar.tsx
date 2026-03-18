@@ -15,6 +15,10 @@ const navItems = [
   { path: '/webhooks',           icon: '🔗', label: 'Webhooks',             section: 'account' },
   { path: '/notifications',      icon: '🔔', label: 'Notifications',        section: 'account' },
   { path: '/subscriptions',     icon: '💎', label: 'Subscription',          section: 'account' },
+  { path: '/developer',          icon: '🚀', label: 'Developer Portal',     section: 'developer' },
+  { path: '/sandbox',            icon: '🧪', label: 'Sandbox Testing',      section: 'developer' },
+  { path: '/developer/analytics', icon: '📈', label: 'Analytics',           section: 'developer' },
+  { path: '/developer/changelog', icon: '📝', label: 'Changelog',           section: 'developer' },
   { path: '/admin',              icon: '⚙️',  label: 'Admin',                section: 'admin', adminOnly: true },
 ];
 
@@ -25,9 +29,10 @@ const Sidebar: React.FC = () => {
   const getInitials = (name: string) =>
     name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
-  const mainItems = navItems.filter((i) => i.section === 'main' && (!i.adminOnly || isAdmin));
+  const mainItems    = navItems.filter((i) => i.section === 'main' && (!i.adminOnly || isAdmin));
   const accountItems = navItems.filter((i) => i.section === 'account');
-  const adminItems = navItems.filter((i) => i.section === 'admin' && isAdmin);
+  const devItems     = navItems.filter((i) => i.section === 'developer');
+  const adminItems   = navItems.filter((i) => i.section === 'admin' && isAdmin);
 
   return (
     <aside className="sidebar">
@@ -59,6 +64,21 @@ const Sidebar: React.FC = () => {
           <NavLink
             key={item.path}
             to={item.path}
+            className={({ isActive }) =>
+              `sidebar-nav-item${isActive ? ' active' : ''}`
+            }
+          >
+            <span className="nav-icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+
+        <div className="sidebar-section-title">Developer</div>
+        {devItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            end={item.path === '/developer'}
             className={({ isActive }) =>
               `sidebar-nav-item${isActive ? ' active' : ''}`
             }

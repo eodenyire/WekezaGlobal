@@ -109,7 +109,7 @@ ON CONFLICT DO NOTHING;
 -- Active key for sandbox partner
 INSERT INTO api_keys (api_key_id, user_id, api_key, name, status)
 VALUES (
-  'apikey01-0000-4000-8000-000000000001',
+  'a0000001-0000-4000-8000-000000000001',
   '44444444-4444-4444-8444-444444444444',
   'wgi_sandbox_partner_key_xyz789',
   'Sandbox Partner Primary Key',
@@ -120,7 +120,7 @@ ON CONFLICT DO NOTHING;
 -- Developer 1 sandbox key
 INSERT INTO api_keys (api_key_id, user_id, api_key, name, status)
 VALUES (
-  'apikey02-0000-4000-8000-000000000002',
+  'a0000002-0000-4000-8000-000000000002',
   '66666666-6666-4666-8666-666666666666',
   'wgi_sandbox_dev1_key_abc123',
   'Developer 1 Sandbox Key',
@@ -131,7 +131,7 @@ ON CONFLICT DO NOTHING;
 -- Developer 2 sandbox key
 INSERT INTO api_keys (api_key_id, user_id, api_key, name, status)
 VALUES (
-  'apikey03-0000-4000-8000-000000000003',
+  'a0000003-0000-4000-8000-000000000003',
   '77777777-7777-4777-8777-777777777777',
   'wgi_sandbox_dev2_key_def456',
   'Developer 2 Sandbox Key',
@@ -144,7 +144,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO subscription_plans (plan_id, name, display_name, price_usd, billing_cycle, features, is_active)
 VALUES
   (
-    'plan0001-0000-4000-8000-000000000001',
+    'ba010001-0000-4000-8000-000000000001',
     'standard',
     'Standard',
     0.00,
@@ -153,7 +153,7 @@ VALUES
     TRUE
   ),
   (
-    'plan0002-0000-4000-8000-000000000002',
+    'ba010002-0000-4000-8000-000000000002',
     'premium',
     'Premium',
     9.99,
@@ -162,7 +162,7 @@ VALUES
     TRUE
   ),
   (
-    'plan0003-0000-4000-8000-000000000003',
+    'ba010003-0000-4000-8000-000000000003',
     'enterprise',
     'Enterprise',
     49.99,
@@ -177,23 +177,23 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO fx_rates (fx_rate_id, currency_from, currency_to, rate, provider)
 VALUES
   -- USD ↔ KES
-  ('fxrate01-0000-4000-8000-000000000001', 'USD', 'KES', 134.500000, 'WGI'),
-  ('fxrate02-0000-4000-8000-000000000002', 'KES', 'USD',   0.007435, 'WGI'),
+  ('d1000001-0000-4000-8000-000000000001', 'USD', 'KES', 134.500000, 'WGI'),
+  ('d1000002-0000-4000-8000-000000000002', 'KES', 'USD',   0.007435, 'WGI'),
   -- EUR ↔ KES
-  ('fxrate03-0000-4000-8000-000000000003', 'EUR', 'KES', 147.200000, 'WGI'),
-  ('fxrate04-0000-4000-8000-000000000004', 'KES', 'EUR',   0.006794, 'WGI'),
+  ('d1000003-0000-4000-8000-000000000003', 'EUR', 'KES', 147.200000, 'WGI'),
+  ('d1000004-0000-4000-8000-000000000004', 'KES', 'EUR',   0.006794, 'WGI'),
   -- GBP ↔ KES
-  ('fxrate05-0000-4000-8000-000000000005', 'GBP', 'KES', 170.800000, 'WGI'),
-  ('fxrate06-0000-4000-8000-000000000006', 'KES', 'GBP',   0.005855, 'WGI'),
+  ('d1000005-0000-4000-8000-000000000005', 'GBP', 'KES', 170.800000, 'WGI'),
+  ('d1000006-0000-4000-8000-000000000006', 'KES', 'GBP',   0.005855, 'WGI'),
   -- EUR ↔ USD
-  ('fxrate07-0000-4000-8000-000000000007', 'EUR', 'USD',   1.090000, 'WGI'),
-  ('fxrate08-0000-4000-8000-000000000008', 'USD', 'EUR',   0.917431, 'WGI'),
+  ('d1000007-0000-4000-8000-000000000007', 'EUR', 'USD',   1.090000, 'WGI'),
+  ('d1000008-0000-4000-8000-000000000008', 'USD', 'EUR',   0.917431, 'WGI'),
   -- GBP ↔ USD
-  ('fxrate09-0000-4000-8000-000000000009', 'GBP', 'USD',   1.270000, 'WGI'),
-  ('fxrate10-0000-4000-8000-000000000010', 'USD', 'GBP',   0.787402, 'WGI'),
+  ('d1000009-0000-4000-8000-000000000009', 'GBP', 'USD',   1.270000, 'WGI'),
+  ('d1000010-0000-4000-8000-000000000010', 'USD', 'GBP',   0.787402, 'WGI'),
   -- EUR ↔ GBP
-  ('fxrate11-0000-4000-8000-000000000011', 'EUR', 'GBP',   0.858268, 'WGI'),
-  ('fxrate12-0000-4000-8000-000000000012', 'GBP', 'EUR',   1.164706, 'WGI')
+  ('d1000011-0000-4000-8000-000000000011', 'EUR', 'GBP',   0.858268, 'WGI'),
+  ('d1000012-0000-4000-8000-000000000012', 'GBP', 'EUR',   1.164706, 'WGI')
 ON CONFLICT DO NOTHING;
 
 -- ─── Notifications ────────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO notifications (notification_id, user_id, type, title, message, is_read, metadata)
 VALUES
   (
-    'notif001-0000-4000-8000-000000000001',
+    'c0000001-0000-4000-8000-000000000001',
     '11111111-1111-4111-8111-111111111111',
     'welcome',
     'Welcome to WekezaGlobal!',
@@ -210,7 +210,7 @@ VALUES
     '{"source":"system","category":"onboarding"}'::jsonb
   ),
   (
-    'notif002-0000-4000-8000-000000000002',
+    'c0000002-0000-4000-8000-000000000002',
     '11111111-1111-4111-8111-111111111111',
     'deposit',
     'Sandbox Deposit Received',
@@ -219,7 +219,7 @@ VALUES
     '{"transaction_id":"ddddddd1-dddd-4ddd-8ddd-ddddddddddd1","amount":5000,"currency":"USD"}'::jsonb
   ),
   (
-    'notif003-0000-4000-8000-000000000003',
+    'c0000003-0000-4000-8000-000000000003',
     '44444444-4444-4444-8444-444444444444',
     'welcome',
     'Welcome, Sandbox Partner!',
@@ -228,7 +228,7 @@ VALUES
     '{"source":"system","category":"onboarding"}'::jsonb
   ),
   (
-    'notif004-0000-4000-8000-000000000004',
+    'c0000004-0000-4000-8000-000000000004',
     '55555555-5555-4555-8555-555555555555',
     'welcome',
     'Welcome, Compliance Officer!',
@@ -237,21 +237,21 @@ VALUES
     '{"source":"system","category":"onboarding"}'::jsonb
   ),
   (
-    'notif005-0000-4000-8000-000000000005',
+    'c0000005-0000-4000-8000-000000000005',
     '66666666-6666-4666-8666-666666666666',
     'api_key',
     'API Key Created',
     'Your sandbox API key wgi_sandbox_dev1_key_abc123 has been created and is ready for use.',
     FALSE,
-    '{"api_key_id":"apikey02-0000-4000-8000-000000000002","key_preview":"wgi_sandbox_dev1_key_abc123"}'::jsonb
+    '{"api_key_id":"a0000002-0000-4000-8000-000000000002","key_preview":"wgi_sandbox_dev1_key_abc123"}'::jsonb
   ),
   (
-    'notif006-0000-4000-8000-000000000006',
+    'c0000006-0000-4000-8000-000000000006',
     '77777777-7777-4777-8777-777777777777',
     'api_key',
     'API Key Created',
     'Your sandbox API key wgi_sandbox_dev2_key_def456 has been created and is ready for use.',
     FALSE,
-    '{"api_key_id":"apikey03-0000-4000-8000-000000000003","key_preview":"wgi_sandbox_dev2_key_def456"}'::jsonb
+    '{"api_key_id":"a0000003-0000-4000-8000-000000000003","key_preview":"wgi_sandbox_dev2_key_def456"}'::jsonb
   )
 ON CONFLICT DO NOTHING;

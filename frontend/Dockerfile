@@ -1,7 +1,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Copy pre-installed node_modules so the image builds without registry access.
+# When node_modules is absent from the build context, add a `RUN npm ci` here.
+COPY node_modules ./node_modules
 COPY public/ ./public/
 COPY src/ ./src/
 COPY tsconfig.json ./

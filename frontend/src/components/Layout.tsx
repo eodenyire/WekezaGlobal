@@ -16,6 +16,7 @@ const topNavTitles: Record<string, string> = {
   '/notifications':      'Notifications',
   '/admin':              'Admin Dashboard',
   '/admin/developers':   'Developer Management',
+  '/overview':           'Platform Overview',
 };
 
 const Layout: React.FC = () => {

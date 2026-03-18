@@ -280,6 +280,388 @@ router.post('/reports', async (req: AuthRequest, res: Response, next: NextFuncti
   }
 });
 
+// ─── GET /v1/admin/developers ────────────────────────────────────────────────
+/**
+ * List all developer accounts with their profile and API key summary.
+ * Query params: limit (default 100), offset (default 0), search (optional)
+ */
+router.get('/developers', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const limit  = Math.min(parseInt(req.query.limit  as string) || 100, 500);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const search = (req.query.search as string)?.trim() ?? '';
+
+    const whereClause = search
+      ? `WHERE (u.full_name ILIKE $3 OR u.email ILIKE $3)`
+      : '';
+    const searchParam = search ? `%${search}%` : undefined;
+    const params: unknown[] = searchParam
+      ? [limit, offset, searchParam]
+      : [limit, offset];
+
+    const { rows } = await pool.query<{
+      user_id: string;
+      full_name: string;
+      email: string;
+      phone_number: string | null;
+      role: string;
+      account_type: string;
+      kyc_status: string;
+      created_at: Date;
+      updated_at: Date;
+      api_key_count: string;
+      active_key_count: string;
+    }>(
+      `SELECT u.user_id, u.full_name, u.email, u.phone_number,
+              u.role, u.account_type, u.kyc_status,
+              u.created_at, u.updated_at,
+              COUNT(ak.api_key_id)::TEXT                                         AS api_key_count,
+              COUNT(ak.api_key_id) FILTER (WHERE ak.status = 'active')::TEXT     AS active_key_count
+         FROM users u
+         LEFT JOIN api_keys ak ON ak.user_id = u.user_id
+         ${whereClause}
+         GROUP BY u.user_id
+         ORDER BY u.created_at DESC
+         LIMIT $1 OFFSET $2`,
+      params
+    );
+
+    const countParams: unknown[] = searchParam ? [searchParam] : [];
+    const countWhere = search
+      ? `WHERE (full_name ILIKE $1 OR email ILIKE $1)`
+      : '';
+    const { rows: countRows } = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM users ${countWhere}`,
+      countParams
+    );
+
+    res.json({
+      developers: rows.map((r) => ({
+        ...r,
+        api_key_count:    parseInt(r.api_key_count, 10),
+        active_key_count: parseInt(r.active_key_count, 10),
+      })),
+      total: parseInt(countRows[0].count, 10),
+      limit,
+      offset,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /v1/admin/developers ───────────────────────────────────────────────
+/**
+ * Create a single developer account.
+ * Automatically provisions a default API key for the new developer.
+ */
+const CreateDeveloperSchema = z.object({
+  full_name:    z.string().min(2).max(200),
+  email:        z.string().email(),
+  phone_number: z.string().optional(),
+  password:     z.string().min(8).default('WekezaDev@2026'),
+  account_type: z.enum(['freelancer', 'sme', 'exporter', 'ecommerce', 'ngo', 'startup', 'individual']).default('individual'),
+  key_name:     z.string().max(100).optional(),
+});
+
+router.post('/developers', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = CreateDeveloperSchema.parse(req.body);
+
+    // Check for duplicate email
+    const existing = await pool.query<{ count: string }>(
+      'SELECT COUNT(*) AS count FROM users WHERE email = $1',
+      [body.email]
+    );
+    if (parseInt(existing.rows[0].count, 10) > 0) {
+      res.status(409).json({ error: 'Conflict', message: 'A user with that email already exists' });
+      return;
+    }
+
+    const bcrypt = await import('bcryptjs');
+    const password_hash = await bcrypt.hash(body.password, 10);
+
+    const { rows } = await pool.query<{ user_id: string; full_name: string; email: string; role: string; kyc_status: string; account_type: string; created_at: Date }>(
+      `INSERT INTO users (full_name, email, phone_number, password_hash, role, account_type)
+       VALUES ($1, $2, $3, $4, 'user', $5)
+       RETURNING user_id, full_name, email, role, kyc_status, account_type, created_at`,
+      [body.full_name, body.email, body.phone_number ?? null, password_hash, body.account_type]
+    );
+
+    const user = rows[0];
+
+    // Provision a default API key
+    const crypto = await import('crypto');
+    const rawKey = `wgi_${crypto.randomBytes(32).toString('hex')}`;
+    const keyName = body.key_name ?? `${body.full_name.split(' ')[0]}'s Default Key`;
+
+    const { rows: keyRows } = await pool.query<{ api_key_id: string; name: string; status: string; created_at: Date }>(
+      `INSERT INTO api_keys (user_id, api_key, name, status)
+       VALUES ($1, $2, $3, 'active')
+       RETURNING api_key_id, name, status, created_at`,
+      [user.user_id, rawKey, keyName]
+    );
+
+    res.status(201).json({
+      developer: user,
+      api_key: { ...keyRows[0], raw_key: rawKey },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /v1/admin/developers/bulk ──────────────────────────────────────────
+/**
+ * Bulk-create up to 100 developer accounts.
+ * Each developer automatically receives one API key.
+ * Returns per-item success/failure details.
+ */
+const BulkCreateDeveloperSchema = z.object({
+  developers: z.array(
+    z.object({
+      full_name:    z.string().min(2).max(200),
+      email:        z.string().email(),
+      phone_number: z.string().optional(),
+      account_type: z.enum(['freelancer', 'sme', 'exporter', 'ecommerce', 'ngo', 'startup', 'individual']).default('individual'),
+    })
+  ).min(1).max(100),
+  default_password: z.string().min(8).default('WekezaDev@2026'),
+});
+
+router.post('/developers/bulk', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = BulkCreateDeveloperSchema.parse(req.body);
+
+    const bcrypt = await import('bcryptjs');
+    const crypto = await import('crypto');
+    const password_hash = await bcrypt.hash(body.default_password, 10);
+
+    const results: Array<{
+      email: string;
+      status: 'created' | 'skipped';
+      user_id?: string;
+      api_key_id?: string;
+      raw_key?: string;
+      reason?: string;
+    }> = [];
+
+    for (const dev of body.developers) {
+      try {
+        const existing = await pool.query<{ count: string }>(
+          'SELECT COUNT(*) AS count FROM users WHERE email = $1',
+          [dev.email]
+        );
+        if (parseInt(existing.rows[0].count, 10) > 0) {
+          results.push({ email: dev.email, status: 'skipped', reason: 'Email already exists' });
+          continue;
+        }
+
+        const { rows } = await pool.query<{ user_id: string }>(
+          `INSERT INTO users (full_name, email, phone_number, password_hash, role, account_type)
+           VALUES ($1, $2, $3, $4, 'user', $5)
+           RETURNING user_id`,
+          [dev.full_name, dev.email, dev.phone_number ?? null, password_hash, dev.account_type]
+        );
+
+        const userId = rows[0].user_id;
+        const rawKey = `wgi_${crypto.randomBytes(32).toString('hex')}`;
+        const keyName = `${dev.full_name.split(' ')[0]}'s Default Key`;
+
+        const { rows: keyRows } = await pool.query<{ api_key_id: string }>(
+          `INSERT INTO api_keys (user_id, api_key, name, status)
+           VALUES ($1, $2, $3, 'active')
+           RETURNING api_key_id`,
+          [userId, rawKey, keyName]
+        );
+
+        results.push({
+          email: dev.email,
+          status: 'created',
+          user_id: userId,
+          api_key_id: keyRows[0].api_key_id,
+          raw_key: rawKey,
+        });
+      } catch {
+        results.push({ email: dev.email, status: 'skipped', reason: 'Internal error during creation' });
+      }
+    }
+
+    const created = results.filter((r) => r.status === 'created').length;
+    const skipped = results.filter((r) => r.status === 'skipped').length;
+
+    res.status(207).json({ created, skipped, results });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /v1/admin/developers/:userId ────────────────────────────────────────
+/**
+ * Full profile for a single developer including all API keys.
+ */
+router.get('/developers/:userId', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { userId } = req.params;
+
+    const { rows: userRows } = await pool.query<{
+      user_id: string; full_name: string; email: string;
+      phone_number: string | null; role: string; account_type: string;
+      kyc_status: string; created_at: Date; updated_at: Date;
+    }>(
+      `SELECT user_id, full_name, email, phone_number, role, account_type,
+              kyc_status, created_at, updated_at
+         FROM users WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (!userRows[0]) {
+      res.status(404).json({ error: 'NotFound', message: 'Developer not found' });
+      return;
+    }
+
+    const { rows: keyRows } = await pool.query<{
+      api_key_id: string; name: string | null; status: string;
+      created_at: Date; api_key: string;
+    }>(
+      `SELECT api_key_id, name, status, created_at,
+              CONCAT(SUBSTRING(api_key, 1, 10), '…') AS api_key
+         FROM api_keys
+        WHERE user_id = $1
+        ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    const { rows: walletRows } = await pool.query<{ currency: string; balance: string }>(
+      'SELECT currency, balance FROM wallets WHERE user_id = $1 ORDER BY currency',
+      [userId]
+    );
+
+    res.json({
+      developer: userRows[0],
+      api_keys: keyRows,
+      wallets: walletRows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PUT /v1/admin/developers/:userId ────────────────────────────────────────
+/**
+ * Update a developer's profile (full_name, phone_number, account_type, kyc_status).
+ */
+const UpdateDeveloperSchema = z.object({
+  full_name:    z.string().min(2).max(200).optional(),
+  phone_number: z.string().optional(),
+  account_type: z.enum(['freelancer', 'sme', 'exporter', 'ecommerce', 'ngo', 'startup', 'individual']).optional(),
+  kyc_status:   z.enum(['pending', 'verified', 'rejected']).optional(),
+});
+
+router.put('/developers/:userId', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { userId } = req.params;
+    const body = UpdateDeveloperSchema.parse(req.body);
+
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (body.full_name    !== undefined) { fields.push(`full_name    = $${idx++}`); values.push(body.full_name); }
+    if (body.phone_number !== undefined) { fields.push(`phone_number = $${idx++}`); values.push(body.phone_number); }
+    if (body.account_type !== undefined) { fields.push(`account_type = $${idx++}`); values.push(body.account_type); }
+    if (body.kyc_status   !== undefined) { fields.push(`kyc_status   = $${idx++}`); values.push(body.kyc_status); }
+
+    if (fields.length === 0) {
+      res.status(400).json({ error: 'BadRequest', message: 'No updatable fields provided' });
+      return;
+    }
+
+    fields.push(`updated_at = NOW()`);
+    values.push(userId);
+
+    const { rows } = await pool.query<{ user_id: string; full_name: string; email: string; role: string; kyc_status: string; account_type: string; updated_at: Date }>(
+      `UPDATE users SET ${fields.join(', ')} WHERE user_id = $${idx}
+       RETURNING user_id, full_name, email, role, kyc_status, account_type, updated_at`,
+      values
+    );
+
+    if (!rows[0]) {
+      res.status(404).json({ error: 'NotFound', message: 'Developer not found' });
+      return;
+    }
+
+    res.json({ developer: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /v1/admin/developers/:userId/api-keys ───────────────────────────────
+/**
+ * Create a new API key on behalf of a developer.
+ */
+const AdminCreateKeySchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+});
+
+router.post('/developers/:userId/api-keys', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { userId } = req.params;
+    const { name } = AdminCreateKeySchema.parse(req.body);
+
+    const { rows: userCheck } = await pool.query<{ count: string }>(
+      'SELECT COUNT(*) AS count FROM users WHERE user_id = $1',
+      [userId]
+    );
+    if (parseInt(userCheck[0].count, 10) === 0) {
+      res.status(404).json({ error: 'NotFound', message: 'Developer not found' });
+      return;
+    }
+
+    const crypto = await import('crypto');
+    const rawKey = `wgi_${crypto.randomBytes(32).toString('hex')}`;
+    const keyName = name ?? 'Admin-provisioned Key';
+
+    const { rows } = await pool.query<{ api_key_id: string; name: string; status: string; created_at: Date }>(
+      `INSERT INTO api_keys (user_id, api_key, name, status)
+       VALUES ($1, $2, $3, 'active')
+       RETURNING api_key_id, name, status, created_at`,
+      [userId, rawKey, keyName]
+    );
+
+    res.status(201).json({ api_key: { ...rows[0], raw_key: rawKey } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── DELETE /v1/admin/developers/:userId/api-keys/:keyId ─────────────────────
+/**
+ * Revoke a specific API key belonging to a developer.
+ */
+router.delete('/developers/:userId/api-keys/:keyId', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { userId, keyId } = req.params;
+
+    const { rows } = await pool.query<{ api_key_id: string; status: string }>(
+      `UPDATE api_keys SET status = 'revoked'
+        WHERE api_key_id = $1 AND user_id = $2
+        RETURNING api_key_id, status`,
+      [keyId, userId]
+    );
+
+    if (!rows[0]) {
+      res.status(404).json({ error: 'NotFound', message: 'API key not found for this developer' });
+      return;
+    }
+
+    res.json({ api_key: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /v1/admin/fx-analytics ──────────────────────────────────────────────
 // Proposal §9 Admin & Analytics Dashboards: "FX reports, compliance monitoring"
 // Proposal §10 Key Metrics: "Settlement speed & FX savings"

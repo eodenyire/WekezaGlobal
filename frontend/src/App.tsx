@@ -24,6 +24,8 @@ import DeveloperPortal   from './pages/DeveloperPortal';
 import SandboxTesting    from './pages/SandboxTesting';
 import DeveloperAnalytics from './pages/DeveloperAnalytics';
 import Changelog         from './pages/Changelog';
+import DeveloperManagement from './pages/DeveloperManagement';
+import PlatformOverview  from './pages/PlatformOverview';
 
 import './styles/global.css';
 
@@ -62,11 +64,20 @@ const App: React.FC = () => (
           <Route path="sandbox"        element={<SandboxTesting />} />
           <Route path="developer/analytics" element={<DeveloperAnalytics />} />
           <Route path="developer/changelog" element={<Changelog />} />
+          <Route path="overview"            element={<PlatformOverview />} />
           <Route
             path="admin"
             element={
               <PrivateRoute adminOnly>
                 <AdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/developers"
+            element={
+              <PrivateRoute adminOnly>
+                <DeveloperManagement />
               </PrivateRoute>
             }
           />

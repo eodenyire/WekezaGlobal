@@ -19,7 +19,9 @@ const navItems = [
   { path: '/sandbox',            icon: '🧪', label: 'Sandbox Testing',      section: 'developer' },
   { path: '/developer/analytics', icon: '📈', label: 'Analytics',           section: 'developer' },
   { path: '/developer/changelog', icon: '📝', label: 'Changelog',           section: 'developer' },
+  { path: '/overview',           icon: '🗺️', label: 'Platform Overview',    section: 'platform' },
   { path: '/admin',              icon: '⚙️',  label: 'Admin',                section: 'admin', adminOnly: true },
+  { path: '/admin/developers',  icon: '👩‍💻', label: 'Developer Management', section: 'admin', adminOnly: true },
 ];
 
 const Sidebar: React.FC = () => {
@@ -32,6 +34,7 @@ const Sidebar: React.FC = () => {
   const mainItems    = navItems.filter((i) => i.section === 'main' && (!i.adminOnly || isAdmin));
   const accountItems = navItems.filter((i) => i.section === 'account');
   const devItems     = navItems.filter((i) => i.section === 'developer');
+  const platformItems = navItems.filter((i) => i.section === 'platform');
   const adminItems   = navItems.filter((i) => i.section === 'admin' && isAdmin);
 
   return (
@@ -92,6 +95,24 @@ const Sidebar: React.FC = () => {
           <>
             <div className="sidebar-section-title">System</div>
             {adminItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `sidebar-nav-item${isActive ? ' active' : ''}`
+                }
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
+
+        {platformItems.length > 0 && (
+          <>
+            <div className="sidebar-section-title">Platform</div>
+            {platformItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}

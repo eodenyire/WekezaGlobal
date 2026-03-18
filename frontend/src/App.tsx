@@ -24,6 +24,7 @@ import DeveloperPortal   from './pages/DeveloperPortal';
 import SandboxTesting    from './pages/SandboxTesting';
 import DeveloperAnalytics from './pages/DeveloperAnalytics';
 import Changelog         from './pages/Changelog';
+import DeveloperManagement from './pages/DeveloperManagement';
 
 import './styles/global.css';
 
@@ -67,6 +68,14 @@ const App: React.FC = () => (
             element={
               <PrivateRoute adminOnly>
                 <AdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/developers"
+            element={
+              <PrivateRoute adminOnly>
+                <DeveloperManagement />
               </PrivateRoute>
             }
           />

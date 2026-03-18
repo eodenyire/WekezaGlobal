@@ -951,6 +951,248 @@ describe('GET /v1/admin/users', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Admin Developer Management
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /v1/admin/developers', () => {
+  it('returns developer list for admin', async () => {
+    const devRow = {
+      user_id: uuidv4(), full_name: 'Alice Dev', email: 'alice@wekeza.dev',
+      phone_number: null, role: 'user', account_type: 'freelancer',
+      kyc_status: 'verified', created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      api_key_count: '2', active_key_count: '1',
+    };
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [devRow] })           // SELECT developers
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] }); // SELECT COUNT
+
+    const res = await request(app)
+      .get('/v1/admin/developers')
+      .set('Authorization', `Bearer ${makeAdminToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.developers)).toBe(true);
+    expect(res.body.total).toBe(1);
+    expect(res.body.developers[0].api_key_count).toBe(2);
+  });
+
+  it('returns 403 for non-admin', async () => {
+    const res = await request(app)
+      .get('/v1/admin/developers')
+      .set('Authorization', `Bearer ${makeToken()}`);
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('POST /v1/admin/developers', () => {
+  it('creates a developer with an API key', async () => {
+    const uid = uuidv4();
+    const kid = uuidv4();
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] })   // email uniqueness check
+      .mockResolvedValueOnce({ rows: [{ user_id: uid, full_name: 'Bob Dev', email: 'bob@dev.io', role: 'user', kyc_status: 'pending', account_type: 'sme', created_at: new Date().toISOString() }] })
+      .mockResolvedValueOnce({ rows: [{ api_key_id: kid, name: "Bob's Default Key", status: 'active', created_at: new Date().toISOString() }] });
+
+    const res = await request(app)
+      .post('/v1/admin/developers')
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({ full_name: 'Bob Dev', email: 'bob@dev.io', account_type: 'sme' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.developer.user_id).toBe(uid);
+    expect(res.body.api_key.raw_key).toMatch(/^wgi_/);
+  });
+
+  it('returns 409 if email already exists', async () => {
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] }); // email uniqueness check
+
+    const res = await request(app)
+      .post('/v1/admin/developers')
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({ full_name: 'Dup Dev', email: 'existing@dev.io' });
+
+    expect(res.status).toBe(409);
+  });
+
+  it('returns 403 for non-admin', async () => {
+    const res = await request(app)
+      .post('/v1/admin/developers')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ full_name: 'X', email: 'x@x.com' });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('POST /v1/admin/developers/bulk', () => {
+  it('bulk-creates developers', async () => {
+    // For each developer: email-check + insert user + insert api key
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+      .mockResolvedValueOnce({ rows: [{ user_id: uuidv4() }] })
+      .mockResolvedValueOnce({ rows: [{ api_key_id: uuidv4() }] })
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+      .mockResolvedValueOnce({ rows: [{ user_id: uuidv4() }] })
+      .mockResolvedValueOnce({ rows: [{ api_key_id: uuidv4() }] });
+
+    const res = await request(app)
+      .post('/v1/admin/developers/bulk')
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({
+        developers: [
+          { full_name: 'Dev One', email: 'dev1@bulk.io', account_type: 'individual' },
+          { full_name: 'Dev Two', email: 'dev2@bulk.io', account_type: 'sme' },
+        ],
+        default_password: 'BulkPass@123',
+      });
+
+    expect(res.status).toBe(207);
+    expect(res.body.created).toBe(2);
+    expect(res.body.skipped).toBe(0);
+  });
+
+  it('skips duplicates in bulk create', async () => {
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] }); // email exists
+
+    const res = await request(app)
+      .post('/v1/admin/developers/bulk')
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({
+        developers: [{ full_name: 'Dup', email: 'dup@bulk.io', account_type: 'individual' }],
+        default_password: 'BulkPass@123',
+      });
+
+    expect(res.status).toBe(207);
+    expect(res.body.skipped).toBe(1);
+    expect(res.body.created).toBe(0);
+  });
+
+  it('returns 400 for empty developers array', async () => {
+    const res = await request(app)
+      .post('/v1/admin/developers/bulk')
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({ developers: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 403 for non-admin', async () => {
+    const res = await request(app)
+      .post('/v1/admin/developers/bulk')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ developers: [{ full_name: 'X', email: 'x@x.com', account_type: 'individual' }] });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('GET /v1/admin/developers/:userId', () => {
+  const uid = uuidv4();
+
+  it('returns developer profile with keys and wallets', async () => {
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ user_id: uid, full_name: 'Alice Dev', email: 'alice@dev.io', phone_number: null, role: 'user', account_type: 'freelancer', kyc_status: 'verified', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] })
+      .mockResolvedValueOnce({ rows: [{ api_key_id: uuidv4(), name: "Alice's Key", status: 'active', created_at: new Date().toISOString(), api_key: 'wgi_abc123…' }] })
+      .mockResolvedValueOnce({ rows: [{ currency: 'USD', balance: '500.00' }] });
+
+    const res = await request(app)
+      .get(`/v1/admin/developers/${uid}`)
+      .set('Authorization', `Bearer ${makeAdminToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.developer.user_id).toBe(uid);
+    expect(Array.isArray(res.body.api_keys)).toBe(true);
+    expect(Array.isArray(res.body.wallets)).toBe(true);
+  });
+
+  it('returns 404 for unknown user', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+    const res = await request(app)
+      .get(`/v1/admin/developers/${uuidv4()}`)
+      .set('Authorization', `Bearer ${makeAdminToken()}`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('PUT /v1/admin/developers/:userId', () => {
+  const uid = uuidv4();
+
+  it('updates developer profile', async () => {
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ user_id: uid, full_name: 'Updated Dev', email: 'dev@io', role: 'user', kyc_status: 'verified', account_type: 'sme', updated_at: new Date().toISOString() }] });
+
+    const res = await request(app)
+      .put(`/v1/admin/developers/${uid}`)
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({ full_name: 'Updated Dev', kyc_status: 'verified' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.developer.full_name).toBe('Updated Dev');
+  });
+
+  it('returns 400 when no updatable fields provided', async () => {
+    const res = await request(app)
+      .put(`/v1/admin/developers/${uid}`)
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({});
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /v1/admin/developers/:userId/api-keys', () => {
+  const uid = uuidv4();
+
+  it('creates an API key for a developer', async () => {
+    const kid = uuidv4();
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] })   // user exists check
+      .mockResolvedValueOnce({ rows: [{ api_key_id: kid, name: 'Test Key', status: 'active', created_at: new Date().toISOString() }] });
+
+    const res = await request(app)
+      .post(`/v1/admin/developers/${uid}/api-keys`)
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({ name: 'Test Key' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.api_key.raw_key).toMatch(/^wgi_/);
+  });
+
+  it('returns 404 if developer not found', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ count: '0' }] });
+    const res = await request(app)
+      .post(`/v1/admin/developers/${uuidv4()}/api-keys`)
+      .set('Authorization', `Bearer ${makeAdminToken()}`)
+      .send({ name: 'Key' });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('DELETE /v1/admin/developers/:userId/api-keys/:keyId', () => {
+  const uid = uuidv4();
+  const kid = uuidv4();
+
+  it('revokes an API key for a developer', async () => {
+    (mockPool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ api_key_id: kid, status: 'revoked' }] });
+
+    const res = await request(app)
+      .delete(`/v1/admin/developers/${uid}/api-keys/${kid}`)
+      .set('Authorization', `Bearer ${makeAdminToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.api_key.status).toBe('revoked');
+  });
+
+  it('returns 404 if key not found', async () => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+    const res = await request(app)
+      .delete(`/v1/admin/developers/${uid}/api-keys/${uuidv4()}`)
+      .set('Authorization', `Bearer ${makeAdminToken()}`);
+    expect(res.status).toBe(404);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Sandbox (v1-core / developer access)
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -20,6 +20,7 @@ const navItems = [
   { path: '/developer/analytics', icon: '📈', label: 'Analytics',           section: 'developer' },
   { path: '/developer/changelog', icon: '📝', label: 'Changelog',           section: 'developer' },
   { path: '/admin',              icon: '⚙️',  label: 'Admin',                section: 'admin', adminOnly: true },
+  { path: '/admin/developers',  icon: '👩‍💻', label: 'Developer Management', section: 'admin', adminOnly: true },
 ];
 
 const Sidebar: React.FC = () => {

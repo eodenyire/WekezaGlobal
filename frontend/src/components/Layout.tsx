@@ -15,6 +15,7 @@ const topNavTitles: Record<string, string> = {
   '/api-keys':           'API Keys',
   '/notifications':      'Notifications',
   '/admin':              'Admin Dashboard',
+  '/admin/developers':   'Developer Management',
 };
 
 const Layout: React.FC = () => {

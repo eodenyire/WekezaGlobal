@@ -26,6 +26,7 @@ import DeveloperAnalytics from './pages/DeveloperAnalytics';
 import Changelog         from './pages/Changelog';
 import DeveloperManagement from './pages/DeveloperManagement';
 import PlatformOverview  from './pages/PlatformOverview';
+import UserProfile       from './pages/UserProfile';
 
 import './styles/global.css';
 
@@ -65,6 +66,7 @@ const App: React.FC = () => (
           <Route path="developer/analytics" element={<DeveloperAnalytics />} />
           <Route path="developer/changelog" element={<Changelog />} />
           <Route path="overview"            element={<PlatformOverview />} />
+          <Route path="profile"             element={<UserProfile />} />
           <Route
             path="admin"
             element={

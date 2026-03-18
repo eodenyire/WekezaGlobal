@@ -26,6 +26,7 @@ services:
       - ./backend/src/database/migrations/012_seed_comprehensive.sql:/docker-entrypoint-initdb.d/012_seed_comprehensive.sql
       - ./backend/src/database/migrations/013_api_key_scopes.sql:/docker-entrypoint-initdb.d/013_api_key_scopes.sql
       - ./backend/src/database/migrations/014_developer_analytics.sql:/docker-entrypoint-initdb.d/014_developer_analytics.sql
+      - ./backend/src/database/migrations/015_seed_100_developers.sql:/docker-entrypoint-initdb.d/015_seed_100_developers.sql
     ports:
       - "5432:5432"
     healthcheck:

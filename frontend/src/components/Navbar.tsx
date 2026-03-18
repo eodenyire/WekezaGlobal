@@ -9,6 +9,7 @@ const navItems = [
   { path: '/fx',                 icon: '💱', label: 'FX Exchange',          section: 'main' },
   { path: '/settlements',        icon: '🏦', label: 'Settlements',          section: 'main' },
   { path: '/cards',              icon: '💳', label: 'Cards',                section: 'main' },
+  { path: '/profile',            icon: '👤', label: 'My Profile',           section: 'account' },
   { path: '/kyc',                icon: '📋', label: 'KYC',                  section: 'account' },
   { path: '/credit',             icon: '📊', label: 'Credit Score',         section: 'account' },
   { path: '/api-keys',           icon: '🔑', label: 'API Keys',             section: 'account' },

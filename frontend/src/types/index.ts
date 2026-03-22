@@ -174,7 +174,93 @@ export interface CollectionAccount {
   updated_at: string;
 }
 
-// ─── Subscriptions (Proposal §7 Revenue Stream 3) ────────────────────────────
+// ─── Developer Ecosystem (v1.4.0) ────────────────────────────────────────────
+
+export interface DeveloperKeyUsage {
+  api_key_id:  string;
+  name:        string | null;
+  status:      string;
+  usage_count: number;
+  created_at:  string;
+}
+
+export interface DeveloperAnalytics {
+  api_keys: {
+    total:  number;
+    active: number;
+    keys:   DeveloperKeyUsage[];
+  };
+  requests: {
+    total_in_window: number;
+    window:          string;
+  };
+  webhooks: {
+    total:  number;
+    active: number;
+  };
+  events: {
+    total_dispatched: number;
+    dispatched_today: number;
+  };
+}
+
+export interface DeveloperEvent {
+  event_id:  string;
+  type:      string;
+  title:     string;
+  message:   string;
+  metadata:  Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface ChangelogEntry {
+  version: string;
+  date:    string;
+  type:    'feature' | 'fix' | 'release' | 'deprecation';
+  changes: string[];
+}
+
+// ─── Partner Integration Layer (v1.4.0) ──────────────────────────────────────
+
+export interface PartnerPayment {
+  payment_id:           string;
+  status:               string;
+  source_account:       string;
+  destination_account:  string;
+  amount:               number;
+  currency:             string;
+  payment_rail:         string;
+  reference:            string;
+  narration:            string | null;
+  partner_id:           string;
+  created_at:           string;
+  estimated_settlement: string;
+}
+
+export interface RiskAssessment {
+  assessment_id: string;
+  account_id:    string;
+  risk_score:    number;
+  risk_level:    'low' | 'medium' | 'high';
+  recommendation: 'approve' | 'review' | 'manual_review';
+  factors: {
+    amount_risk:   string;
+    velocity_risk: string;
+    pattern_risk:  string;
+  };
+  assessed_at: string;
+}
+
+export interface IdentityVerification {
+  verification_id:  string;
+  status:           string;
+  confidence_score: number;
+  full_name:        string;
+  id_type:          string;
+  id_number_masked: string;
+  verified_at:      string;
+  next_review_at:   string;
+}
 
 export interface SubscriptionPlan {
   plan_id:       string;

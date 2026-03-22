@@ -9,13 +9,20 @@ const navItems = [
   { path: '/fx',                 icon: '💱', label: 'FX Exchange',          section: 'main' },
   { path: '/settlements',        icon: '🏦', label: 'Settlements',          section: 'main' },
   { path: '/cards',              icon: '💳', label: 'Cards',                section: 'main' },
+  { path: '/profile',            icon: '👤', label: 'My Profile',           section: 'account' },
   { path: '/kyc',                icon: '📋', label: 'KYC',                  section: 'account' },
   { path: '/credit',             icon: '📊', label: 'Credit Score',         section: 'account' },
   { path: '/api-keys',           icon: '🔑', label: 'API Keys',             section: 'account' },
   { path: '/webhooks',           icon: '🔗', label: 'Webhooks',             section: 'account' },
   { path: '/notifications',      icon: '🔔', label: 'Notifications',        section: 'account' },
   { path: '/subscriptions',     icon: '💎', label: 'Subscription',          section: 'account' },
+  { path: '/developer',          icon: '🚀', label: 'Developer Portal',     section: 'developer' },
+  { path: '/sandbox',            icon: '🧪', label: 'Sandbox Testing',      section: 'developer' },
+  { path: '/developer/analytics', icon: '📈', label: 'Analytics',           section: 'developer' },
+  { path: '/developer/changelog', icon: '📝', label: 'Changelog',           section: 'developer' },
+  { path: '/overview',           icon: '🗺️', label: 'Platform Overview',    section: 'platform' },
   { path: '/admin',              icon: '⚙️',  label: 'Admin',                section: 'admin', adminOnly: true },
+  { path: '/admin/developers',  icon: '👩‍💻', label: 'Developer Management', section: 'admin', adminOnly: true },
 ];
 
 const Sidebar: React.FC = () => {
@@ -25,9 +32,11 @@ const Sidebar: React.FC = () => {
   const getInitials = (name: string) =>
     name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
-  const mainItems = navItems.filter((i) => i.section === 'main' && (!i.adminOnly || isAdmin));
+  const mainItems    = navItems.filter((i) => i.section === 'main' && (!i.adminOnly || isAdmin));
   const accountItems = navItems.filter((i) => i.section === 'account');
-  const adminItems = navItems.filter((i) => i.section === 'admin' && isAdmin);
+  const devItems     = navItems.filter((i) => i.section === 'developer');
+  const platformItems = navItems.filter((i) => i.section === 'platform');
+  const adminItems   = navItems.filter((i) => i.section === 'admin' && isAdmin);
 
   return (
     <aside className="sidebar">
@@ -68,10 +77,43 @@ const Sidebar: React.FC = () => {
           </NavLink>
         ))}
 
+        <div className="sidebar-section-title">Developer</div>
+        {devItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            end={item.path === '/developer'}
+            className={({ isActive }) =>
+              `sidebar-nav-item${isActive ? ' active' : ''}`
+            }
+          >
+            <span className="nav-icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+
         {adminItems.length > 0 && (
           <>
             <div className="sidebar-section-title">System</div>
             {adminItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `sidebar-nav-item${isActive ? ' active' : ''}`
+                }
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
+
+        {platformItems.length > 0 && (
+          <>
+            <div className="sidebar-section-title">Platform</div>
+            {platformItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}

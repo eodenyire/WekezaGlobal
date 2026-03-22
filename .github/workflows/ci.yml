@@ -67,8 +67,8 @@ jobs:
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
           JWT_EXPIRY: 3600
-          OAUTH_CLIENT_ID: test-client
-          OAUTH_CLIENT_SECRET: test-secret
+          OAUTH_CLIENT_ID: wgi-client
+          OAUTH_CLIENT_SECRET: wgi-client-secret
         run: npm test
 
   # ─────────────────────────────────────────
